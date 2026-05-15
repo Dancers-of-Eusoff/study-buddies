@@ -1,0 +1,106 @@
+## use AI to generate this
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Node / React frontend
+# =========================
+node_modules/
+dist/
+build/
+.vite/
+.next/
+out/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Go backend
+# =========================
+bin/
+tmp/
+*.exe
+*.test
+*.out
+coverage.out
+
+# Go workspace files, only ignore if not intentionally used
+go.work
+go.work.sum
+
+# =========================
+# Python CV service
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+ENV/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+*.ipynb_checkpoints/
+
+# =========================
+# Database / local storage
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+postgres-data/
+redis-data/
+
+# =========================
+# Docker / local volumes
+# =========================
+.docker/
+docker-data/
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / editor
+# =========================
+.vscode/
+.idea/
+
+# Keep shared VS Code recommendations if you create them intentionally
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# =========================
+# Test / coverage reports
+# =========================
+coverage/
+htmlcov/
+.coverage
+
+# =========================
+# Generated files
+# =========================
+generated/
+uploads/
