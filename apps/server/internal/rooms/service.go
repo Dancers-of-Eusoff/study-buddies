@@ -24,7 +24,7 @@ func (s *Service) CreateRoom(req CreateRoomRequest) (RoomDetailsResponse, error)
 		return RoomDetailsResponse{}, ErrUserIDRequired
 	}
 
-	if req.Type != "PUBLIC" || req.Type != "PRIVATE" {
+	if req.Type != "PUBLIC" && req.Type != "PRIVATE" {
 		return RoomDetailsResponse{}, ErrInvalidRoomType
 	}
 
