@@ -1,0 +1,8 @@
+.myConvo {
+    display: flex;
+    justify-content: end;
+}
+
+.theirConvo {
+    display: flex;
+}
