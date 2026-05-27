@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 )
 
 func main() {
@@ -13,6 +14,11 @@ func main() {
 	roomHandler := rooms.NewHandler(roomService)
 
 	mux := http.NewServeMux()
+
+	sessionRepo := sessions.NewMemoryRepository()
+	sessionService := sessions.NewService(sessionRepo)
+	sessionHandler := sessions.NewHandler(sessionService)
+	sessionHandler.RegisterRoutes(mux)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
