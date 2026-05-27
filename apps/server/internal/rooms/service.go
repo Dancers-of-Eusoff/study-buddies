@@ -28,7 +28,7 @@ func (s *Service) CreateRoom(req CreateRoomRequest) (RoomDetailsResponse, error)
 		return RoomDetailsResponse{}, ErrInvalidRoomType
 	}
 
-	roomID, err := GenerateRoomID("room")
+	roomID, err := GenerateID("room")
 	if err != nil {
 		return RoomDetailsResponse{}, err
 	}

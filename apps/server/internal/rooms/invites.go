@@ -21,7 +21,7 @@ func GenerateRandomCode(length int) (string, error) {
 	return string(inviteCode), nil
 }
 
-func GenerateRoomID(prefix string) (string, error) {
+func GenerateID(prefix string) (string, error) {
 	res, err := GenerateRandomCode(8)
 	if err != nil {
 		return "", err
