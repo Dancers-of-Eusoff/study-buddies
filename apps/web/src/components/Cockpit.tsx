@@ -1,11 +1,16 @@
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import styles from "./Cockpit.module.css"
+
+function Flashbang() {
+    
+}
 
 function Cockpit() {
     function LookAtMe() {
         const objectDetectorRef= useRef<ObjectDetector>(null);
         const videoRef = useRef<HTMLVideoElement>(null);
+        let [flashbang, setFlashbang] = useState(false);
 
         useEffect(() => {
             const init = async () => {
@@ -31,17 +36,37 @@ function Cockpit() {
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
                     await videoRef.current.play();
+                    predictWebcam();
                 }
             };
+
+            function predictWebcam() {
+                if (objectDetectorRef.current && videoRef.current) {
+                const startTimeMs = performance.now();
+                const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
+                
+                if (results.detections.length > 0 && !flashbang) {
+                    setFlashbang(true);
+                }
+                
+                requestAnimationFrame(predictWebcam);
+                }
+            }
             
             init();
             startCamera();
         }, []);
 
         return (
-            <div className={styles.focusVideo}>
-                <video ref={videoRef} autoPlay playsInline />
-            </div>
+            <>
+                <div className={styles.focusVideo}>
+                    <video ref={videoRef} autoPlay playsInline />
+                </div>
+                <div className={styles.flashbang}>
+                    {flashbang && <video src="/flashbangs/gahdyum.webm" autoPlay playsInline />}
+                    <button onClick={ () => setFlashbang(!flashbang) }>{ flashbang ? "Close" : "" }</button>
+                </div>
+            </>
         )
     }
 
