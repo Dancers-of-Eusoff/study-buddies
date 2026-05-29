@@ -1,0 +1,15 @@
+.focusVideo {
+    margin: 10vh 10px 10px 10px;
+    height: 65vh;
+    border-radius: 5%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.focusVideo video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
