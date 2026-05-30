@@ -6,6 +6,7 @@ import (
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
 )
 
 func main() {
@@ -19,6 +20,11 @@ func main() {
 	sessionService := sessions.NewService(sessionRepo)
 	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
+
+	userRepo := users.NewMemoryRepository()
+	userService := users.NewService(userRepo)
+	userHandler := users.NewHandler(userService)
+	userHandler.RegisterRoutes(mux)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
