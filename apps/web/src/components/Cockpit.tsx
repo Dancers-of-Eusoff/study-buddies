@@ -22,7 +22,7 @@ function Cockpit() {
                     baseOptions: {
                         modelAssetPath: "/models/efficientdet_lite0.tflite"
                     },
-                    scoreThreshold: 0.5,
+                    scoreThreshold: 0.7,
                     runningMode: "VIDEO",
                     categoryAllowlist: ["cell phone"]
                 })
