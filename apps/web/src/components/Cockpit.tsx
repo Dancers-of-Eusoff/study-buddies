@@ -1,10 +1,6 @@
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./Cockpit.module.css"
-
-function Flashbang() {
-    
-}
 
 function Cockpit() {
     function LookAtMe() {
@@ -70,13 +66,13 @@ function Cockpit() {
         )
     }
 
-    function User() {
-        return (
-            <div className={styles.focusVideo}>
-                <img src="/social-page.gif" alt="user" style={{"height": "70%"}}/>
-            </div>
-        )
-    }
+    // function User() {
+    //     return (
+    //         <div className={styles.focusVideo}>
+    //             <img src="/social-page.gif" alt="user" style={{"height": "70%"}}/>
+    //         </div>
+    //     )
+    // }
 
     return (
         <div>
