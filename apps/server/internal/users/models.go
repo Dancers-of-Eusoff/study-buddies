@@ -11,7 +11,7 @@ type User struct {
 	ID           string    `json:"id"`
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"` // Stripped out during JSON transmission
-	CreatedAt    time.Time `json:"created_at"`
+	CreatedAt    time.Time `json:"createdAt"`
 }
 
 // RegisterRequest parses registration form details.
@@ -28,7 +28,7 @@ type LoginRequest struct {
 type AuthResponse struct {
 	Token    string `json:"token"`
 	Username string `json:"username"`
-	UserID   string `json:"user_id"`
+	UserID   string `json:"userId"`
 }
 
 type ErrorResponse struct {
@@ -36,7 +36,7 @@ type ErrorResponse struct {
 }
 
 type Claims struct {
-	UserID   string `json:"user_id"`
+	UserID   string `json:"userId"`
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
