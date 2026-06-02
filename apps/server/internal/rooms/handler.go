@@ -17,7 +17,7 @@ func NewHandler(service *Service) *Handler {
 
 // assign http to function
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/rooms/join", h.handleJoinRoom)
+	mux.HandleFunc("/api/rooms-join", h.handleJoinRoom)
 	mux.HandleFunc("/api/rooms/", h.handleRoomByID)
 	mux.HandleFunc("/api/rooms", h.handleRooms)
 }
@@ -100,7 +100,7 @@ func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roomID := strings.TrimPrefix(r.URL.Path, "/api/rooms/")
+	roomID := strings.TrimPrefix(r.URL.Path, "/api/rooms")
 	if roomID == "" {
 		writeJSONError(w, http.StatusBadRequest, "room id is required")
 		return
