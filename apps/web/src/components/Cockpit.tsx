@@ -1,12 +1,13 @@
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
 import { useEffect, useRef, useState } from "react";
 import styles from "./Cockpit.module.css"
+import { Link } from "react-router";
 
 function Cockpit() {
     function LookAtMe() {
         const objectDetectorRef= useRef<ObjectDetector>(null);
         const videoRef = useRef<HTMLVideoElement>(null);
-        let [flashbang, setFlashbang] = useState(false);
+        const [flashbang, setFlashbang] = useState(false);
 
         useEffect(() => {
             const init = async () => {
@@ -74,9 +75,20 @@ function Cockpit() {
     //     )
     // }
 
+    function Buttons() {
+        return (
+            <div>
+                <button>
+                    <Link to='/'>Go home</Link>
+                </button>
+            </div>
+        )
+    }
+
     return (
         <div>
             <LookAtMe />
+            <Buttons />
         </div>
     )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
 import { startSession, endSession } from '../api/sessionsApi';
