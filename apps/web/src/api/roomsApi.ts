@@ -37,8 +37,6 @@ export async function createRoom(token: string, req: CreateRoomRequest): Promise
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to create room'));
 
-  console.log(data)
-  
   return { room: (data.room ?? data) as Room, members: (data.members as RoomDetails['members']) ?? [] };
 }
 

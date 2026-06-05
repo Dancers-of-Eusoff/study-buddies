@@ -1,7 +1,6 @@
 package rooms
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -29,7 +28,6 @@ func (s *Service) CreateRoom(req CreateRoomRequest) (RoomDetailsResponse, error)
 	}
 
 	roomID, err := GenerateID("room")
-	fmt.Printf(roomID)
 
 	if err != nil {
 		return RoomDetailsResponse{}, err
