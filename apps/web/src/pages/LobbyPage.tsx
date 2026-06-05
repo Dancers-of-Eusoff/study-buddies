@@ -20,8 +20,6 @@ type Modal = 'none' | 'create' | 'join-private';
 export default function LobbyPage() {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
-
-  console.log(user)
   
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +71,7 @@ export default function LobbyPage() {
     };
     try {
       const details = await createRoom(token, req);
-      console.log(details.room.id)
+
       navigate(`/rooms/${details.room.id}`);
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create room');
