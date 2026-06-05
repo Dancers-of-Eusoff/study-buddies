@@ -31,10 +31,14 @@ export async function listPublicRooms(token: string, moduleCode?: string): Promi
 
 export async function createRoom(token: string, req: CreateRoomRequest): Promise<RoomDetails> {
   const res = await fetch(BASE, {
-    method: 'POST', headers: authHeaders(token), body: JSON.stringify(req),
+    method: 'POST', headers: {...authHeaders(token), 'Content-Type':'application/json'}, body: JSON.stringify(req),
   });
+
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to create room'));
+
+  console.log(data)
+  
   return { room: (data.room ?? data) as Room, members: (data.members as RoomDetails['members']) ?? [] };
 }
 
@@ -42,6 +46,7 @@ export async function joinRoom(token: string, req: JoinRoomRequest): Promise<Roo
   const res = await fetch(`${BASE}-join`, {
     method: 'POST', headers: {...authHeaders(token), 'Content-Type': 'application/json' }, body: JSON.stringify(req),
   });
+  
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to join room'));
   return { room: (data.room ?? data) as Room, members: (data.members as RoomDetails['members']) ?? [] };
