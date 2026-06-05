@@ -1,7 +1,7 @@
 package rooms
 
 import (
-	"errors"
+	"fmt"
 	"time"
 )
 
@@ -29,6 +29,8 @@ func (s *Service) CreateRoom(req CreateRoomRequest) (RoomDetailsResponse, error)
 	}
 
 	roomID, err := GenerateID("room")
+	fmt.Printf(roomID)
+
 	if err != nil {
 		return RoomDetailsResponse{}, err
 	}
@@ -103,7 +105,7 @@ func (s *Service) JoinRoom(req JoinRoomRequest) (RoomDetailsResponse, error) {
 			return RoomDetailsResponse{}, err
 		}
 	} else if req.RoomID != "" {
-		room, err = s.repo.FindRoomByID(req.InviteCode)
+		room, err = s.repo.FindRoomByID(req.RoomID)
 		if err != nil {
 			return RoomDetailsResponse{}, err
 		}
@@ -161,24 +163,4 @@ func (s *Service) GetRoomDetails(roomID string) (RoomDetailsResponse, error) {
 
 func (s *Service) ListPublicRooms(moduleCode string) ([]Room, error) {
 	return s.repo.ListPublicRooms(moduleCode)
-}
-
-func (s *Service) generateUniqueInviteCode() (string, error) {
-	for i := 0; i < 5; i++ {
-		code, err := GenerateRandomCode(6)
-		if err != nil {
-			return "", err
-		}
-
-		_, err = s.repo.FindRoomByInviteCode(code)
-		if errors.Is(err, ErrRoomNotFound) {
-			return code, nil
-		}
-
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return "", ErrInviteCodeGenerationFailed
 }

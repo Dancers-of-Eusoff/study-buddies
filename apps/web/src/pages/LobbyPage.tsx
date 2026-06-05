@@ -21,6 +21,8 @@ export default function LobbyPage() {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
 
+  console.log(user)
+  
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

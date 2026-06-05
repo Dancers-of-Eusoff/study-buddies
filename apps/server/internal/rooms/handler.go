@@ -100,7 +100,7 @@ func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roomID := strings.TrimPrefix(r.URL.Path, "/api/rooms")
+	roomID := strings.TrimPrefix(r.URL.Path, "/api/rooms/")
 	if roomID == "" {
 		writeJSONError(w, http.StatusBadRequest, "room id is required")
 		return
