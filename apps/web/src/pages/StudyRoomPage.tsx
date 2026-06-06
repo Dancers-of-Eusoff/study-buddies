@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
 import { startSession, endSession } from '../api/sessionsApi';
 import { useTimer } from '../hooks/useTimer';
+import styles from "./StudyRoomPage.module.css";
 import type { RoomDetails, Session, FocusState } from '../types';
 
 const C = {
@@ -37,6 +39,7 @@ export default function StudyRoomPage() {
   const [sessionError, setSessionError] = useState('');
 
   const [myFocusState, setMyFocusState] = useState<FocusState>('FOCUSED');
+  const [flashbang, setFlashbang] = useState(false);
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -88,6 +91,75 @@ export default function StudyRoomPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
+
+  function Flashbang({ flashbang, setFlashbang } : { flashbang: boolean; setFlashbang: (b: boolean) => void }) {
+    return flashbang && (
+      <div className='popup'>
+        <div className='flashbang'>
+          <button className={ styles.closeButton } onClick={() => setFlashbang(false)}>Close</button>
+          <video src="/flashbangs/gahdyum.webm" autoPlay loop className={ styles.flashbangVideo } />
+        </div>
+      </div>
+    )
+  }
+
+  function LookAtMe({ flashbang, setFlashbang } : { flashbang: boolean; setFlashbang: (b: boolean) => void }) {
+        const objectDetectorRef= useRef<ObjectDetector>(null);
+        const videoRef = useRef<HTMLVideoElement>(null);
+
+        useEffect(() => {
+            const init = async () => {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+                );
+
+                objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "/models/efficientdet_lite0.tflite"
+                    },
+                    scoreThreshold: 0.7,
+                    runningMode: "VIDEO",
+                    categoryAllowlist: ["cell phone"]
+                })
+            }
+
+            const startCamera = async () => {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: true
+                });
+
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    await videoRef.current.play();
+                    predictWebcam();
+                }
+            };
+
+            function predictWebcam() {
+                if (objectDetectorRef.current && videoRef.current) {
+                const startTimeMs = performance.now();
+                const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
+                
+                if (results.detections.length > 0 && !flashbang) {
+                    setFlashbang(true);
+                }
+                
+                requestAnimationFrame(predictWebcam);
+                }
+            }
+            
+            init();
+            startCamera();
+        }, []);
+
+        return (
+            <>
+                <div className={styles.focusVideo}>
+                    <video ref={videoRef} autoPlay playsInline />
+                </div>
+            </>
+        )
+    }
 
   const totalSecs = (roomDetails?.room.durationMinutes ?? 60) * 60;
   const remaining = Math.max(0, totalSecs - elapsedSecs);
@@ -157,7 +229,7 @@ export default function StudyRoomPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Camera placeholder */}
-          <div style={{ background: C.white, borderRadius: 28, border: `1.5px solid ${C.peach200}`, boxShadow: '0 4px 24px rgba(108,93,211,0.1)', overflow: 'hidden', position: 'relative' }}>
+          {/* <div style={{ background: C.white, borderRadius: 28, border: `1.5px solid ${C.peach200}`, boxShadow: '0 4px 24px rgba(108,93,211,0.1)', overflow: 'hidden', position: 'relative' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: 10, background: `linear-gradient(135deg, ${C.peach100}, ${C.lavender100})`, minHeight: 280 }}>
               <span style={{ fontSize: '3.5rem' }}>📷</span>
               <p style={{ fontFamily: font.display, fontSize: '1.1rem', color: C.navy }}>Camera preview</p>
@@ -166,6 +238,9 @@ export default function StudyRoomPage() {
             <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', padding: '6px 18px', borderRadius: 999, fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap', background: focusInfo.color + '22', border: `1.5px solid ${focusInfo.color}55`, color: focusInfo.color }}>
               {focusInfo.emoji} {focusInfo.label}
             </div>
+          </div> */}
+          <div style={{ background: C.white, borderRadius: 28, border: `1.5px solid ${C.peach200}`, boxShadow: '0 4px 24px rgba(108,93,211,0.1)', overflow: 'hidden', position: 'relative' }}>
+            <LookAtMe flashbang={flashbang} setFlashbang={setFlashbang} />
           </div>
 
           {/* Session card */}
@@ -286,6 +361,9 @@ export default function StudyRoomPage() {
             </div>
           </div>
         </div>
+
+        {/* Flashbang popup */}
+        <Flashbang flashbang={flashbang} setFlashbang={setFlashbang} />
       </div>
 
       {/* Leave confirm modal */}
