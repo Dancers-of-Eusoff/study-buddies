@@ -20,7 +20,7 @@ type Modal = 'none' | 'create' | 'join-private';
 export default function LobbyPage() {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
-
+  
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,7 +54,7 @@ export default function LobbyPage() {
     setJoining(room.id);
     try {
       await joinRoom(token, { userId: user.userId, userName: user.username, roomId: room.id });
-      navigate(`/room/${room.id}`);
+      navigate(`/rooms/${room.id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to join room');
       setJoining(null);
@@ -71,7 +71,8 @@ export default function LobbyPage() {
     };
     try {
       const details = await createRoom(token, req);
-      navigate(`/room/${details.room.id}`);
+
+      navigate(`/rooms/${details.room.id}`);
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create room');
       setCreateLoading(false);
@@ -84,7 +85,7 @@ export default function LobbyPage() {
     setJoinPrivateLoading(true); setJoinPrivateError('');
     try {
       const details = await joinRoom(token, { userId: user.userId, userName: user.username, inviteCode: inviteCode.trim().toUpperCase() });
-      navigate(`/room/${details.room.id}`);
+      navigate(`/rooms/${details.room.id}`);
     } catch (e: unknown) {
       setJoinPrivateError(e instanceof Error ? e.message : 'Invalid invite code');
       setJoinPrivateLoading(false);

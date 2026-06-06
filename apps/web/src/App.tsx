@@ -30,7 +30,7 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
-      <Route path="/room/:roomId" element={<RequireAuth><StudyRoomPage /></RequireAuth>} />
+      <Route path="/rooms/:roomId" element={<RequireAuth><StudyRoomPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -27,7 +27,7 @@ export default function StudyRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, token } = useAuth();
   const navigate = useNavigate();
-
+  
   const [roomDetails, setRoomDetails] = useState<RoomDetails | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [roomError, setRoomError] = useState('');

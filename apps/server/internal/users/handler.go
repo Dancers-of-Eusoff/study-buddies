@@ -90,7 +90,7 @@ func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, http.StatusOK, map[string]string{
-		"user_id":  claims.UserID,
+		"userId":   claims.UserID,
 		"username": claims.Username,
 	})
 }
