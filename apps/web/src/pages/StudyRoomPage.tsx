@@ -93,11 +93,15 @@ export default function StudyRoomPage() {
   }
 
   function Flashbang({ flashbang, setFlashbang } : { flashbang: boolean; setFlashbang: (b: boolean) => void }) {
+    useEffect(() => {
+      console.log("Flashbang: ", flashbang);
+    }, [flashbang]);
+
     return flashbang && (
-      <div className='popup'>
-        <div className='flashbang'>
+      <div className={ styles.popup }>
+        <div className={ styles.flashbang }>
           <button className={ styles.closeButton } onClick={() => setFlashbang(false)}>Close</button>
-          <video src="/flashbangs/gahdyum.webm" autoPlay loop className={ styles.flashbangVideo } />
+          <video src="/flashbangs/sgboleh.mp4" autoPlay className={ styles.flashbangVideo } />
         </div>
       </div>
     )
@@ -106,6 +110,7 @@ export default function StudyRoomPage() {
   function LookAtMe({ flashbang, setFlashbang } : { flashbang: boolean; setFlashbang: (b: boolean) => void }) {
         const objectDetectorRef= useRef<ObjectDetector>(null);
         const videoRef = useRef<HTMLVideoElement>(null);
+        console.log("Flashbang: ", flashbang);
 
         useEffect(() => {
             const init = async () => {
@@ -117,7 +122,7 @@ export default function StudyRoomPage() {
                     baseOptions: {
                         modelAssetPath: "/models/efficientdet_lite0.tflite"
                     },
-                    scoreThreshold: 0.7,
+                    scoreThreshold: 0.69,
                     runningMode: "VIDEO",
                     categoryAllowlist: ["cell phone"]
                 })
@@ -361,9 +366,6 @@ export default function StudyRoomPage() {
             </div>
           </div>
         </div>
-
-        {/* Flashbang popup */}
-        <Flashbang flashbang={flashbang} setFlashbang={setFlashbang} />
       </div>
 
       {/* Leave confirm modal */}
@@ -380,6 +382,9 @@ export default function StudyRoomPage() {
           </div>
         </div>
       )}
+
+      {/* Flashbang popup */}
+      <Flashbang flashbang={flashbang} setFlashbang={setFlashbang} />
     </div>
   );
 }

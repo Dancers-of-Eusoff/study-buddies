@@ -25,19 +25,19 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 100;
 }
 
 .flashbang {
     position: relative;
-    width: 100%;
+    width: 50%;
     max-width: 640px;
 }
 
-/* .flashbang video {
+.flashbang video {
     width: 100%;
     height: 100%;
-} */
+}
 
 .flashbang .closeButton {
     position: absolute;
