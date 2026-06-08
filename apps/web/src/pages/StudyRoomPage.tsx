@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,76 @@ const FOCUS_STATES: { state: FocusState; label: string; emoji: string; color: st
   { state: 'PAUSED',     label: 'Paused',     emoji: '⏸️', color: '#9d9bc0' },
 ];
 
+function Flashbang({ myFocusState, setMyFocusState } : { myFocusState: FocusState; setMyFocusState: Dispatch<SetStateAction<FocusState>> }) {
+  return myFocusState == 'DISTRACTED' && (
+    <div className={ styles.popup }>
+      <div className={ styles.flashbang }>
+        <button className={ styles.closeButton } onClick={() => setMyFocusState("FOCUSED")}>Close</button>
+        <video src="/flashbangs/sgboleh.mp4" autoPlay className={ styles.flashbangVideo } />
+      </div>
+    </div>
+  )
+}
+
+const LookAtMe = memo(({ myFocusState, setMyFocusState } : { myFocusState: FocusState, setMyFocusState: (f: FocusState) => void }) => {
+  const objectDetectorRef= useRef<ObjectDetector>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+      const init = async () => {
+          const vision = await FilesetResolver.forVisionTasks(
+              "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+          );
+
+          objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
+              baseOptions: {
+                  modelAssetPath: "/models/efficientdet_lite0.tflite"
+              },
+              scoreThreshold: 0.67,
+              runningMode: "VIDEO",
+              categoryAllowlist: ["cell phone"]
+          })
+      }
+
+      const startCamera = async () => {
+          const stream = await navigator.mediaDevices.getUserMedia({
+              video: true
+          });
+
+          if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              await videoRef.current.play();
+              predictWebcam();
+          }
+      };
+
+      function predictWebcam() {
+          if (objectDetectorRef.current && videoRef.current) {
+            const startTimeMs = performance.now();
+            const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
+            console.log(`Detections result: ${results.detections[0]}\nFocus state: ${myFocusState}`);
+            
+            if (results.detections.length > 0 && myFocusState !== "DISTRACTED") {
+              setMyFocusState("DISTRACTED");
+            }
+            
+            requestAnimationFrame(predictWebcam);
+          }
+      }
+      
+      init();
+      startCamera();
+  }, []);
+
+  return (
+      <>
+          <div className={styles.focusVideo}>
+              <video ref={videoRef} autoPlay playsInline />
+          </div>
+      </>
+  )
+});
+
 export default function StudyRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, token } = useAuth();
@@ -39,7 +110,6 @@ export default function StudyRoomPage() {
   const [sessionError, setSessionError] = useState('');
 
   const [myFocusState, setMyFocusState] = useState<FocusState>('FOCUSED');
-  const [flashbang, setFlashbang] = useState(false);
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -91,80 +161,6 @@ export default function StudyRoomPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
-
-  function Flashbang({ flashbang, setFlashbang } : { flashbang: boolean; setFlashbang: (b: boolean) => void }) {
-    useEffect(() => {
-      console.log("Flashbang: ", flashbang);
-    }, [flashbang]);
-
-    return flashbang && (
-      <div className={ styles.popup }>
-        <div className={ styles.flashbang }>
-          <button className={ styles.closeButton } onClick={() => setFlashbang(false)}>Close</button>
-          <video src="/flashbangs/sgboleh.mp4" autoPlay className={ styles.flashbangVideo } />
-        </div>
-      </div>
-    )
-  }
-
-  function LookAtMe({ flashbang, setFlashbang } : { flashbang: boolean; setFlashbang: (b: boolean) => void }) {
-        const objectDetectorRef= useRef<ObjectDetector>(null);
-        const videoRef = useRef<HTMLVideoElement>(null);
-        console.log("Flashbang: ", flashbang);
-
-        useEffect(() => {
-            const init = async () => {
-                const vision = await FilesetResolver.forVisionTasks(
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
-                );
-
-                objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
-                    baseOptions: {
-                        modelAssetPath: "/models/efficientdet_lite0.tflite"
-                    },
-                    scoreThreshold: 0.69,
-                    runningMode: "VIDEO",
-                    categoryAllowlist: ["cell phone"]
-                })
-            }
-
-            const startCamera = async () => {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true
-                });
-
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    await videoRef.current.play();
-                    predictWebcam();
-                }
-            };
-
-            function predictWebcam() {
-                if (objectDetectorRef.current && videoRef.current) {
-                const startTimeMs = performance.now();
-                const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
-                
-                if (results.detections.length > 0 && !flashbang) {
-                    setFlashbang(true);
-                }
-                
-                requestAnimationFrame(predictWebcam);
-                }
-            }
-            
-            init();
-            startCamera();
-        }, []);
-
-        return (
-            <>
-                <div className={styles.focusVideo}>
-                    <video ref={videoRef} autoPlay playsInline />
-                </div>
-            </>
-        )
-    }
 
   const totalSecs = (roomDetails?.room.durationMinutes ?? 60) * 60;
   const remaining = Math.max(0, totalSecs - elapsedSecs);
@@ -245,7 +241,7 @@ export default function StudyRoomPage() {
             </div>
           </div> */}
           <div style={{ background: C.white, borderRadius: 28, border: `1.5px solid ${C.peach200}`, boxShadow: '0 4px 24px rgba(108,93,211,0.1)', overflow: 'hidden', position: 'relative' }}>
-            <LookAtMe flashbang={flashbang} setFlashbang={setFlashbang} />
+            <LookAtMe myFocusState={myFocusState} setMyFocusState={setMyFocusState} />
           </div>
 
           {/* Session card */}
@@ -384,7 +380,7 @@ export default function StudyRoomPage() {
       )}
 
       {/* Flashbang popup */}
-      <Flashbang flashbang={flashbang} setFlashbang={setFlashbang} />
+      <Flashbang myFocusState={myFocusState} setMyFocusState={setMyFocusState} />
     </div>
   );
 }
