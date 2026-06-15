@@ -54,7 +54,7 @@ export default function LobbyPage() {
     setJoining(room.id);
     try {
       await joinRoom(token, { userId: user.userId, userName: user.username, roomId: room.id });
-      navigate(`/rooms/${room.id}`);
+      navigate(`/sexier-rooms/${room.id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to join room');
       setJoining(null);
