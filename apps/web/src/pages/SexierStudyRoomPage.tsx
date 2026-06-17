@@ -1,3 +1,4 @@
+import type { CSSProperties, ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { RoomProvider, useRoom } from '../context/RoomContext'
 import styles from './SexierStudyRoomPage.module.css'
@@ -35,7 +36,7 @@ function Navbar() {
                     </div>
                 </div>
                 <div className={styles.navRight}>
-                    {roomType === "PRIVATE" && <button className={styles.inviteBtn}>{ inviteCode}</button>}
+                    {roomType === "PRIVATE" && <button className={styles.inviteBtn}>{ inviteCode }</button>}
                     <div className={styles.userBadge}>
                         <span>🐼 { user?.username }</span><span></span>
                     </div>
@@ -45,11 +46,22 @@ function Navbar() {
     )
 }
 
+function Card({ children, style } : { children : ReactNode, style?: CSSProperties}) {
+    return (
+        <div className={styles.card} style={style}>
+            {children}
+        </div>
+    )
+}
+
 export default function SexierStudyRoomPage() {
     return (
         <div className={styles.container}>
             <RoomProvider>
                     <Navbar />
+                    <Card style={{ height: "50vh" }}>
+                        I love you
+                    </Card>
             </RoomProvider>
         </div>
     )

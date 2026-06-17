@@ -245,7 +245,7 @@ export default function StudyRoomPage() {
           </div>
 
           {/* Session card */}
-          <div style={{ background: C.white, borderRadius: 28, border: `1.5px solid ${C.peach200}`, boxShadow: '0 4px 24px rgba(108,93,211,0.1)', padding: 24 }}>
+          <div style={{ background: C.white, borderRadius: 28, border: `1.5px solid ${C.peach200}`, boxShadow: '0 4px 24px rgba(108,93,211,0.1)', overflow: 'hidden', position: 'relative' }}>
             {!sessionActive ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10, padding: '12px 0' }}>
                 <span style={{ fontSize: '2.5rem' }}>🌙</span>
