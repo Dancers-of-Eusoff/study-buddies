@@ -14,6 +14,11 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
+.ghost:hover {
+  transform: translateY(1.5px);
+  box-shadow: 0 1.5px 0 var(--tan-deep);
+}
+
 .ghost:active {
   transform: translateY(3px);
   box-shadow: 0 0 0 var(--tan-deep);
@@ -31,6 +36,11 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm) var(--sky-deep);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.primary:hover {
+  transform: translateY(1.5px);
+  box-shadow: 0 1.5px 0 var(--sky-deep);
 }
 
 .primary:active {
@@ -52,6 +62,11 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
+.hero:hover {
+  transform: translateY(1.5px);
+  box-shadow: 0 1.5px 0 var(--sky-deep);
+}
+
 .hero:active {
   transform: translateY(5px);
   box-shadow: 0 0 0 var(--sky-deep);
@@ -65,12 +80,17 @@
   border-radius: var(--radius-md);
   color: var(--white);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 1.3rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: var(--shadow-md) var(--sky-deep);
   margin-top: 8px;
   transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.submit:hover {
+  transform: translateY(2.5px);
+  box-shadow: 0 2.5px 0 var(--sky-deep);
 }
 
 .submit:active:not(:disabled) {

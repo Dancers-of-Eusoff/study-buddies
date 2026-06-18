@@ -39,7 +39,7 @@
   position: fixed;
   bottom: 15%;
   left: 5%;
-  font-size: 2.5rem;
+  font-size: 3rem;
   opacity: 0.35;
   pointer-events: none;
   z-index: 1;
@@ -49,7 +49,7 @@
   position: fixed;
   top: 20%;
   right: 6%;
-  font-size: 2rem;
+  font-size: 2.4rem;
   opacity: 0.35;
   pointer-events: none;
   z-index: 1;
@@ -66,11 +66,16 @@
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 1.15rem;
   cursor: pointer;
   z-index: 20;
   box-shadow: var(--shadow-sm) var(--tan-deep);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.backBtn:hover {
+  transform: translateY(1.5px);
+  box-shadow: 0 1.5px 0 var(--tan-deep);
 }
 
 .backBtn:active {
@@ -100,7 +105,7 @@
 }
 
 .emoji {
-  font-size: 2.8rem;
+  font-size: 3.36rem;
 }
 
 .dots {
@@ -122,14 +127,14 @@
 .title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 2.2rem;
+  font-size: 2.64rem;
   color: var(--ink);
   margin: 0 0 6px;
   line-height: 1.2;
 }
 
 .subtitle {
-  font-size: 0.95rem;
+  font-size: 1.25rem;
   color: var(--bark);
   margin: 0 0 28px;
   line-height: 1.5;
@@ -138,7 +143,7 @@
 
 .switchRow {
   text-align: center;
-  font-size: 0.88rem;
+  font-size: 1.1rem;
   color: var(--bark);
   margin-top: 20px;
   font-weight: 600;
@@ -147,11 +152,16 @@
 .switchLink {
   background: none;
   border: none;
-  color: var(--sky-deep);
+  color: var(--sky);
   font-family: var(--font-body);
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 1.1rem;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
+  transition: color 0.18s ease;
+}
+
+.switchLink:hover {
+  color: var(--sky-deep);
 }

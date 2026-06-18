@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.88rem;
+  font-size: 1.272rem;
   font-weight: 700;
   color: var(--ink);
 }
@@ -26,7 +26,7 @@
   border: 2px solid var(--tan-deep);
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--ink);
   background: var(--white);
@@ -61,7 +61,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.2rem;
   opacity: 0.65;
   padding: 4px;
   display: flex;
@@ -69,7 +69,7 @@
 }
 
 .error {
-  font-size: 0.8rem;
+  font-size: 1.05rem;
   color: var(--coral-deep);
   font-weight: 700;
   display: flex;

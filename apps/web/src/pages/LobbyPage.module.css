@@ -377,15 +377,21 @@
 }
 
 .modalCloseBtn {
-  background: var(--sky-light);
+  background: var(--cream);
   border: none;
-  color: var(--sky-deep);
+  color: var(--bark);
   width: 32px;
   height: 32px;
   border-radius: 50%;
   font-size: 1.02rem;
   cursor: pointer;
   font-weight: 700;
+  transition: color 0.18s ease;
+}
+
+.modalCloseBtn:hover {
+  background: var(--bark);
+  color: var(--cream);
 }
 
 .modalCopy {
