@@ -1,0 +1,13 @@
+.apiError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--coral-light);
+  border: 1.5px solid var(--coral);
+  color: var(--coral-deep);
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  font-size: 1.272rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
