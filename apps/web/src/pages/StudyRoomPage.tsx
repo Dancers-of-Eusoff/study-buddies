@@ -198,9 +198,6 @@ export default function StudyRoomPage() {
           {room.type === 'PRIVATE' && isOwner && (
             <button onClick={() => setShowInviteCode((p) => !p)} className={styles.inviteToggleBtn}>🔑 Invite code</button>
           )}
-          <div className={styles.userChip}>
-            <span>🐼</span><span>{user?.username}</span>
-          </div>
         </div>
       </nav>
 

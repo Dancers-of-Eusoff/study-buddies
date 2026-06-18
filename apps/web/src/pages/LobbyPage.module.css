@@ -166,24 +166,34 @@
   box-shadow: 0 1.5px 0 var(--sky-deep);
 }
 
+@keyframes spin {
+  from { rotate: 0deg; }
+  to   { rotate: -359deg; }
+}
+
 .refreshBtn {
   margin-left: auto;
   background: var(--white);
   border: 1.5px solid var(--tan-deep);
-  color: var(--sky-deep);
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  font-size: 1.32rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.12s ease;
+  rotate: 0.1turn;
+  transition: transform 0.3s ease;
+}
+
+.refreshBtn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .refreshBtn:hover {
-  transform: rotate(45deg);
+  transform: rotate(0.25turn);
+  /* animation: spin 1s linear infinite; */
 }
 
 /* --- Loading / error / empty states --- */

@@ -219,32 +219,26 @@
 .navRight {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 30px;
 }
 
 .inviteToggleBtn {
-  background: var(--white);
-  border: 1.5px solid var(--sky);
-  color: var(--sky-deep);
+  background: var(--sky-light);
+  border: 1.5px solid var(--sky-deep);
+  color: var(--sky);
   padding: 7px 14px;
   border-radius: var(--radius-pill);
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.984rem;
   cursor: pointer;
+  box-shadow: var(--shadow-sm) var(--sky-deep);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.userChip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--sky-light);
-  border: 1px solid var(--sky);
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-  font-size: 1.02rem;
-  color: var(--ink);
+.inviteToggleBtn:hover {
+  transform: translateY(1.5px);
+  box-shadow: 0 1.5px 0 var(--sky-deep);
 }
 
 /* --- Invite toast --- */
@@ -288,15 +282,29 @@
   font-weight: 700;
   font-size: 0.984rem;
   cursor: pointer;
+  box-shadow: var(--shadow-md) var(--sky-deep);
+  transition: all 0.1s ease;
+}
+
+.inviteCopyBtn:hover {
+  transform: translateY(1.5px);
+  box-shadow: 0 3.5px 0 var(--sky-deep);
 }
 
 .inviteCloseBtn {
   margin-left: auto;
   background: none;
   border: none;
+  border-radius: var(--radius-pill);
   color: var(--bark);
   font-size: 1.2rem;
   cursor: pointer;
+  transition: all 0.8s ease;
+}
+
+.inviteCloseBtn:hover {
+  font-size: 1.5rem;
+  rotate: 0.25turn;
 }
 
 /* --- Main layout --- */
