@@ -18,6 +18,13 @@ const FOCUS_STATES: { state: FocusState; label: string; emoji: string; colorVar:
   { state: 'PAUSED',     label: 'Paused',     emoji: '⏸️', colorVar: 'var(--bark)' },
 ];
 
+function DestressBtn () {
+  const [count, setCount] = useState(0);
+  return (
+    <button className={ styles.destressBtn } onClick={() => setCount(c => c + 1)}>{ count }</button>
+  )
+}
+
 function Flashbang({ myFocusState, setMyFocusState } : { myFocusState: FocusState; setMyFocusState: Dispatch<SetStateAction<FocusState>> }) {
   return myFocusState == 'DISTRACTED' && (
     <div className={ styles.popup }>
@@ -194,10 +201,15 @@ export default function StudyRoomPage() {
             <span className={styles.typeTag}>{room.type === 'PRIVATE' ? '🔑 Private' : '🌍 Public'}</span>
           </div>
         </div>
+        <div className={styles.navCenter}>
+          <span>
+            Press me to destress: <DestressBtn />
+          </span>
+        </div>
         <div className={styles.navRight}>
-          {room.type === 'PRIVATE' && isOwner && (
+          {/* {room.type === 'PRIVATE' && isOwner && ( */}
             <button onClick={() => setShowInviteCode((p) => !p)} className={styles.inviteToggleBtn}>🔑 Invite code</button>
-          )}
+          {/* )} */}
         </div>
       </nav>
 

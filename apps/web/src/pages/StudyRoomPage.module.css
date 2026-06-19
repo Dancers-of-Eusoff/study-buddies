@@ -216,10 +216,41 @@
   font-weight: 700;
 }
 
-.navRight {
+.navCenter {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 30px;
+  flex: 1;
+}
+
+.destressBtn {
+  background: var(--sky);
+  padding: 5px 20px;
+  font-size: 1rem;
+  border: 2px solid black;
+  border-radius: 15px;
+  box-shadow: var(--shadow-lg);
+  transition: all 0.35s ease;
+}
+
+.destressBtn:hover {
+  border-bottom: 8px solid black;
+  transform: translateY(-6px);
+  transition: all 0.15s ease;
+}
+
+.destressBtn:active {
+  box-shadow: 0 0px 0 0 black;
+  transform: translateY(8px);
+}
+
+.navRight {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  gap: 30px;
+  flex: 1;
 }
 
 .inviteToggleBtn {
