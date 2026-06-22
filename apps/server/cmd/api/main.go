@@ -7,6 +7,7 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/websocket"
 )
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -26,6 +27,11 @@ func corsMiddleware(next http.Handler) http.Handler {
 func main() {
 	mux := http.NewServeMux()
 
+	// --- WebSocket Infrastructure Block Initialization ---
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+
+	// --- Existing Feature Package Initializations ---
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
 	roomHandler := rooms.NewHandler(roomService)
@@ -40,6 +46,22 @@ func main() {
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
+
+	// --- Pure Infrastructure Testing Endpoint ---
+	wsHandler := websocket.NewHandler(wsHub)
+	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
+			switch event.Type {
+			case "JOIN_TEST_ROOM":
+				wsHub.SubscribeToRoom(event.RoomID, client)
+				log.Printf("User [%s] subscribed to testing room context [%s]", client.UserID, event.RoomID)
+
+			case "TEST_ECHO":
+				log.Printf("Received structural echo test packet for room [%s]", event.RoomID)
+				wsHub.BroadcastEvent(event)
+			}
+		})
+	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
