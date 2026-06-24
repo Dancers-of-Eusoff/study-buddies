@@ -1,0 +1,123 @@
+/* ============================================
+   Study Buddies — Design Tokens
+   Palette: cream / tan / sky-blue
+   Type: Magilio (display) + Bubblegum Sans (body)
+   Signature: solid offset "pressable" shadows
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bubblegum+Sans&display=swap');
+
+@font-face {
+  font-family: 'Magilio';
+  src: url('../assets/fonts/Magilio.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* --- Color: cream/tan base, sky-blue accent --- */
+  --cream:        #FBF6EC;
+  --cream-deep:   #F2E9D8;
+  --tan:          #E8DCC4;
+  --tan-deep:     #D9C9A6;
+  --bark:         #8A7A5C;
+  --bark-light:   #B3A37E;
+  --ink:          #2E2A22;
+
+  --sky:          #5B9EE8;
+  --sky-deep:     #3C7AC4;
+  --sky-light:    #DCEBFB;
+
+  --leaf:         #7FC97F;
+  --leaf-deep:    #5BA45B;
+  --leaf-light:   #E3F5E0;
+
+  --coral:        #F2876B;
+  --coral-deep:   #D4654A;
+  --coral-light:  #FCE6DF;
+
+  --white:        #FFFFFF;
+
+  /* --- Legacy palette (kept for any components still referencing these) --- */
+  --navy:         #2d2b55;
+  --mid:          #6b6891;
+  --soft:         #9d9bc0;
+
+  --lavender-100: #f0eeff;
+  --lavender-200: #ddd8ff;
+  --lavender-300: #c4bafe;
+  --lavender-400: #a99af5;
+  --lavender-500: #8b79e8;
+  --lavender-600: #6c5dd3;
+
+  --peach-100:    #fff0e8;
+  --peach-200:    #fdddc8;
+
+  /* --- Type --- */
+  --font-display: 'Magilio', cursive;
+  --font-body:    'Bubblegum Sans', sans-serif;
+  --mono:         ui-monospace, Consolas, monospace;
+
+  /* --- Radius --- */
+  --radius-sm:  12px;
+  --radius-md:  18px;
+  --radius-lg:  26px;
+  --radius-pill: 999px;
+
+  /* --- Offset shadow depths (the "pressable" signature) --- */
+  --shadow-sm: 0 3px 0;
+  --shadow-md: 0 5px 0;
+  --shadow-lg: 0 7px 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Bubblegum Sans', sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body), 'Bubblegum Sans', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display), 'Magilio', cursive;
+  margin: 0;
+}
+
+button, input, textarea, select {
+  font-family: var(--font-body), 'Bubblegum Sans', sans-serif;
+}
+
+p {
+  margin: 0;
+}
+
+/* --- Kept from former index.css: app shell layout, unrelated to theme --- */
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Kept from former index.css: inline code styling, unrelated to theme --- */
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--cream-deep);
+}

@@ -1,11 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import type { User } from '../types';
 import { fetchMe } from '../api/authApi';
 
 interface AuthContextValue {
   user: User | null;
   token: string | null;
-  isLoading: boolean;
+  isLoading: boolean;  
   login: (token: string, user: User) => void;
   logout: () => void;
 }

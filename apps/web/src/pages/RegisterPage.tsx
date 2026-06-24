@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
 import { registerUser } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import btn from '../components/Buttons.module.css';
+import styles from './RegisterPage.module.css';
 
 function getStrength(pw: string): number {
   if (!pw) return 0;
@@ -16,7 +19,8 @@ function getStrength(pw: string): number {
 }
 
 const STRENGTH_LABELS = ['', 'Weak 😬', 'Okay 😐', 'Good 😊', 'Strong 💪'];
-const STRENGTH_COLORS = ['', '#f87171', '#fb923c', '#fbbf24', '#4ade80'];
+// Indexed to match the palette: coral -> coral -> gold -> leaf
+const STRENGTH_COLOR_VARS = ['', 'var(--coral)', '#f0a84e', '#f5c451', 'var(--leaf)'];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -94,20 +98,19 @@ export default function RegisterPage() {
         />
 
         {password.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '-4px 0 14px' }}>
-            <div style={{ flex: 1, display: 'flex', gap: 4 }}>
+          <div className={styles.strengthRow}>
+            <div className={styles.strengthBars}>
               {[1, 2, 3, 4].map((n) => (
-                <div key={n} style={{
-                  flex: 1, height: 4, borderRadius: 999,
-                  background: n <= strength ? STRENGTH_COLORS[strength] : '#ddd8ff',
-                  transition: 'background 0.3s ease',
-                }} />
+                <div
+                  key={n}
+                  className={styles.strengthBar}
+                  style={{ background: n <= strength ? STRENGTH_COLOR_VARS[strength] : 'var(--tan-deep)' }}
+                />
               ))}
             </div>
-            <span style={{
-              fontSize: '0.78rem', fontWeight: 700, minWidth: 68,
-              textAlign: 'right', color: STRENGTH_COLORS[strength],
-            }}>{STRENGTH_LABELS[strength]}</span>
+            <span className={styles.strengthLabel} style={{ color: STRENGTH_COLOR_VARS[strength] }}>
+              {STRENGTH_LABELS[strength]}
+            </span>
           </div>
         )}
 
@@ -121,13 +124,7 @@ export default function RegisterPage() {
         />
 
         {apiError && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: '#fef2f2', border: '1.5px solid #fecaca',
-            color: '#dc2626', padding: '11px 14px',
-            borderRadius: 20, fontSize: '0.88rem',
-            fontWeight: 600, marginBottom: 12,
-          }}>
+          <div className={styles.apiError}>
             😓 {apiError}
           </div>
         )}
@@ -135,19 +132,7 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading || success}
-          style={{
-            width: '100%', padding: '15px',
-            background: success
-              ? 'linear-gradient(135deg, #4ade80, #22c55e)'
-              : 'linear-gradient(135deg, #8b79e8, #6c5dd3)',
-            border: 'none', borderRadius: 20,
-            color: 'white', fontFamily: "'Nunito', sans-serif",
-            fontSize: '1rem', fontWeight: 800,
-            cursor: loading || success ? 'not-allowed' : 'pointer',
-            marginTop: 8, opacity: loading || success ? 0.85 : 1,
-            boxShadow: '0 6px 20px rgba(108,93,211,0.35)',
-            transition: 'all 0.2s ease',
-          }}
+          className={`${btn.submit} ${success ? btn.submitSuccess : ''}`}
         >
           {success ? '🎉 Account created! Redirecting...' : loading ? 'Creating account...' : '✨ Create my account'}
         </button>
