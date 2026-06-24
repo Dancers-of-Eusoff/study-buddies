@@ -1,8 +1,10 @@
 package users
 
 import (
-	"strings"
+	"log"
 	"sync"
+	"strings"
+	"database/sql"
 )
 
 type Repository interface {
@@ -14,6 +16,28 @@ type MemoryRepository struct {
 	mu    sync.RWMutex
 	users map[string]*User
 }
+
+// Connect to Postgres: start
+type UserRepo struct {
+	db *sql.DB
+}
+
+func NewUserRepo(db *sql.DB) *UserRepo {
+	return &UserRepo{db: db}
+}
+
+func (r *UserRepo) CreateUser(p CreateUserParams) int {
+	var pk int
+	query := `INSERT INTO users (username, password, email)
+		VALUES ($1, $2, $3) RETURNING id`
+
+	err := r.db.QueryRow(query, p.Username, p.Password, p.Email).Scan(&pk)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return pk
+}
+// Connect to Postgres: end
 
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{

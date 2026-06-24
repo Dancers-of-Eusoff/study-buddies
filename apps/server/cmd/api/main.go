@@ -1,12 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
+
+	_ "github.com/lib/pq"
 )
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -21,6 +24,17 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func NewDB(connStr string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func main() {
@@ -40,6 +54,17 @@ func main() {
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
+
+	// DB connection
+	connStr := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+	db, err := NewDB(connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialise Repos
+	usersRepo := users.NewUserRepo(db)
+	usersRepo.CreateUser(users.CreateUserParams{Username: "Tan", Password: "6969", Email: "tan@tantan.tan"})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
