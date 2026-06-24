@@ -15,8 +15,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func corsMiddleware(next http.Handler) http.Handler {
+func corsMiddleware(next http.Handler) http.Handler {	
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -70,47 +74,35 @@ func main() {
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
+		if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.WriteHeader(http.StatusNoContent)
+		return
+		}
 		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
-			switch event.Type {
+		log.Printf("📨 Event [%s] roomId [%s] from user [%s]", event.Type, event.RoomID, client.UserID)
 
-			case "JOIN_ROOM":
-				wsHub.SubscribeToRoom(event.RoomID, client)
-				log.Printf("User [%s] joined room [%s]", client.UserID, event.RoomID)
+		switch event.Type {
 
-			case "SEND_MESSAGE":
-				var payload chat.SendMessagePayload
-				if err := json.Unmarshal(event.Payload, &payload); err != nil {
-					log.Printf("Failed to parse SEND_MESSAGE payload: %v", err)
-					return
-				}
-				if _, err := chatService.ProcessSentMessage(payload); err != nil {
-					log.Printf("Failed to process message: %v", err)
-				}
+		case "JOIN_ROOM":
+			wsHub.SubscribeToRoom(event.RoomID, client)
+			log.Printf("✅ User [%s] joined room [%s]", client.UserID, event.RoomID)
+
+		case "SEND_MESSAGE":
+			var payload chat.SendMessagePayload
+			if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Printf("❌ SEND_MESSAGE parse error: %v", err)
+			return
 			}
-		})
-
-		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
-			log.Printf("📨 Received event type: [%s] roomId: [%s]", event.Type, event.RoomID)
-
-			switch event.Type {
-			case "JOIN_ROOM":
-				wsHub.SubscribeToRoom(event.RoomID, client)
-				log.Printf("✅ User [%s] subscribed to room [%s]", client.UserID, event.RoomID)
-
-			case "SEND_MESSAGE":
-				log.Printf("📝 Raw payload: %s", string(event.Payload))
-				var payload chat.SendMessagePayload
-				if err := json.Unmarshal(event.Payload, &payload); err != nil {
-					log.Printf("❌ Failed to parse payload: %v", err)
-					return
-				}
-				log.Printf("💬 Processing message from [%s] in room [%s]: %s", payload.SenderID, payload.RoomID, payload.Content)
-				if _, err := chatService.ProcessSentMessage(payload); err != nil {
-					log.Printf("❌ Failed to process message: %v", err)
-				}
+			if _, err := chatService.ProcessSentMessage(payload); err != nil {
+			log.Printf("❌ ProcessSentMessage error: %v", err)
 			}
+		}
 		})
-
 	})
 
 	// --- Chat history REST endpoint ---
