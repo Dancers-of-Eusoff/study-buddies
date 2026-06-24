@@ -1,15 +1,19 @@
 package users
 
 import (
-	"log"
 	"sync"
 	"strings"
 	"database/sql"
 )
 
+// type Repository interface {
+// 	CreateUser(user *User) error
+// 	FindByUsername(username string) (*User, bool)
+// }
+
 type Repository interface {
-	CreateUser(user *User) error
-	FindByUsername(username string) (*User, bool)
+	CreateUser(p CreateUserParams) (int, error)
+	FindByUsername(username string) (UserDTO, bool)
 }
 
 type MemoryRepository struct {
@@ -26,16 +30,21 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) CreateUser(p CreateUserParams) int {
+func (r *UserRepo) CreateUser(p CreateUserParams) (int, error) {
 	var pk int
 	query := `INSERT INTO users (username, password, email)
 		VALUES ($1, $2, $3) RETURNING id`
 
 	err := r.db.QueryRow(query, p.Username, p.Password, p.Email).Scan(&pk)
 	if err != nil {
-		log.Fatal(err)
+		return 0, err
 	}
-	return pk
+	return pk, nil
+}
+
+func (r *UserRepo) FindByUsername(username string) (UserDTO, bool) {
+	// testing
+	return UserDTO{}, false
 }
 // Connect to Postgres: end
 

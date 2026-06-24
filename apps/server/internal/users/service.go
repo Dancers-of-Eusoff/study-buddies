@@ -34,30 +34,51 @@ func (s *Service) Register(req RegisterRequest) (User, string, error) {
 		return User{}, "", ErrUserExists
 	}
 
-	user := &User{
-		ID:           fmt.Sprintf("user_%d", time.Now().UnixNano()),
+	// user := &User{
+	// 	ID:           fmt.Sprintf("user_%d", time.Now().UnixNano()),
+	// 	Username:     req.Username,
+	// 	PasswordHash: s.hashPassword(req.Password),
+	// 	CreatedAt:    time.Now(),
+	// }
+
+	user := CreateUserParams{
+		Username: req.Username,
+		Password: s.hashPassword(req.Password),
+		Email: "testing@tete.com",
+	}
+
+	id, err := s.repo.CreateUser(user)
+	if err != nil {
+		return User{}, "", err
+	}
+
+	userToken := &User{
+		ID: fmt.Sprintf("%d", id),
 		Username:     req.Username,
 		PasswordHash: s.hashPassword(req.Password),
 		CreatedAt:    time.Now(),
 	}
 
-	if err := s.repo.CreateUser(user); err != nil {
-		return User{}, "", err
-	}
+	token, err := s.GenerateToken(userToken)
 
-	token, err := s.GenerateToken(user)
-	return *user, token, err
+	return *userToken, token, err
+	// if err := s.repo.CreateUser(user); err != nil {
+	// 	return User{}, "", err
+	// }
+
+	// token, err := s.GenerateToken(user)
+	// return *user, token, err
 }
 
-func (s *Service) Login(req LoginRequest) (User, string, error) {
-	user, exists := s.repo.FindByUsername(req.Username)
-	if !exists || !s.checkPassword(req.Password, user.PasswordHash) {
-		return User{}, "", ErrInvalidAuth
-	}
+// func (s *Service) Login(req LoginRequest) (User, string, error) {
+// 	user, exists := s.repo.FindByUsername(req.Username)
+// 	if !exists || !s.checkPassword(req.Password, user.PasswordHash) {
+// 		return User{}, "", ErrInvalidAuth
+// 	}
 
-	token, err := s.GenerateToken(user)
-	return *user, token, err
-}
+// 	token, err := s.GenerateToken(user)
+// 	return *user, token, err
+// }
 
 func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {

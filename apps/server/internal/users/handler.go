@@ -16,7 +16,7 @@ func NewHandler(service *Service) *Handler {
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/register", h.handleRegister)
-	mux.HandleFunc("/api/auth/login", h.handleLogin)
+	// mux.HandleFunc("/api/auth/login", h.handleLogin)
 	mux.HandleFunc("/api/auth/me", h.handleMe)
 }
 
@@ -45,30 +45,30 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
+// func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodPost {
+// 		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+// 		return
+// 	}
 
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, ErrInvalidJSON)
-		return
-	}
+// 	var req LoginRequest
+// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+// 		h.writeError(w, http.StatusBadRequest, ErrInvalidJSON)
+// 		return
+// 	}
 
-	user, token, err := h.service.Login(req)
-	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, err)
-		return
-	}
+// 	user, token, err := h.service.Login(req)
+// 	if err != nil {
+// 		h.writeError(w, http.StatusUnauthorized, err)
+// 		return
+// 	}
 
-	h.writeJSON(w, http.StatusOK, AuthResponse{
-		Token:    token,
-		Username: user.Username,
-		UserID:   user.ID,
-	})
-}
+// 	h.writeJSON(w, http.StatusOK, AuthResponse{
+// 		Token:    token,
+// 		Username: user.Username,
+// 		UserID:   user.ID,
+// 	})
+// }
 
 func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

@@ -32,6 +32,7 @@ export async function registerUser(username: string, password: string): Promise<
     body: JSON.stringify({ username, password }),
   });
   const body = await safeJson(res);
+  console.log(`REGISTER SUCC: ${body}`);
   if (!res.ok) throw new Error(friendlyError(body.error ?? '', 'Registration failed, please try again'));
   return body as unknown as AuthResponse;
 }

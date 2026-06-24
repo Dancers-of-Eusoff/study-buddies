@@ -56,6 +56,12 @@ type QueryUserDTO struct {
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 }
 
+type UserDTO struct {
+	ID			string	`json:"id"`
+	Username	string	`json:"username"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
 var (
 	ErrUserExists       = errors.New("username already taken")
 	ErrInvalidAuth      = errors.New("invalid username or password")

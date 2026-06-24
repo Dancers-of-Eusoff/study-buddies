@@ -38,6 +38,13 @@ func NewDB(connStr string) (*sql.DB, error) {
 }
 
 func main() {
+	// DB connection
+	connStr := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+	db, err := NewDB(connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	mux := http.NewServeMux()
 
 	roomRepo := rooms.NewMemoryRepository()
@@ -50,21 +57,14 @@ func main() {
 	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
 
-	userRepo := users.NewMemoryRepository()
+	// userRepo := users.NewMemoryRepository()
+	userRepo := users.NewUserRepo(db)
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
-
-	// DB connection
-	connStr := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
-	db, err := NewDB(connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	
 	// Initialise Repos
-	usersRepo := users.NewUserRepo(db)
-	usersRepo.CreateUser(users.CreateUserParams{Username: "Tan", Password: "6969", Email: "tan@tantan.tan"})
+	userRepo.CreateUser(users.CreateUserParams{Username: "Tan", Password: "6969", Email: "tan@tantan.tan"})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
