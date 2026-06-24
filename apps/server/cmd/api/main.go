@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"database/sql"
 	"log"
 	"net/http"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/websocket"
+
+	_ "github.com/lib/pq"
 )
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -24,6 +27,17 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func NewDB(connStr string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func main() {
@@ -118,6 +132,16 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(msgs)
 	})
+	// DB connection
+	connStr := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+	db, err := NewDB(connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialise Repos
+	usersRepo := users.NewUserRepo(db)
+	usersRepo.CreateUser(users.CreateUserParams{Username: "Tan", Password: "6969", Email: "tan@tantan.tan"})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
