@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
@@ -27,11 +29,15 @@ func corsMiddleware(next http.Handler) http.Handler {
 func main() {
 	mux := http.NewServeMux()
 
-	// --- WebSocket Infrastructure Block Initialization ---
+	// --- WebSocket Infrastructure ---
 	wsHub := websocket.NewHub()
 	go wsHub.Run()
 
-	// --- Existing Feature Package Initializations ---
+	// --- Chat Service (wired to WebSocket hub) ---
+	chatRepo := chat.NewMemoryRepository()
+	chatService := chat.NewService(chatRepo, wsHub)
+
+	// --- Existing Feature Packages ---
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
 	roomHandler := rooms.NewHandler(roomService)
@@ -47,20 +53,70 @@ func main() {
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
 
-	// --- Pure Infrastructure Testing Endpoint ---
+	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
 			switch event.Type {
-			case "JOIN_TEST_ROOM":
-				wsHub.SubscribeToRoom(event.RoomID, client)
-				log.Printf("User [%s] subscribed to testing room context [%s]", client.UserID, event.RoomID)
 
-			case "TEST_ECHO":
-				log.Printf("Received structural echo test packet for room [%s]", event.RoomID)
-				wsHub.BroadcastEvent(event)
+			case "JOIN_ROOM":
+				wsHub.SubscribeToRoom(event.RoomID, client)
+				log.Printf("User [%s] joined room [%s]", client.UserID, event.RoomID)
+
+			case "SEND_MESSAGE":
+				var payload chat.SendMessagePayload
+				if err := json.Unmarshal(event.Payload, &payload); err != nil {
+					log.Printf("Failed to parse SEND_MESSAGE payload: %v", err)
+					return
+				}
+				if _, err := chatService.ProcessSentMessage(payload); err != nil {
+					log.Printf("Failed to process message: %v", err)
+				}
 			}
 		})
+
+		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
+			log.Printf("📨 Received event type: [%s] roomId: [%s]", event.Type, event.RoomID)
+
+			switch event.Type {
+			case "JOIN_ROOM":
+				wsHub.SubscribeToRoom(event.RoomID, client)
+				log.Printf("✅ User [%s] subscribed to room [%s]", client.UserID, event.RoomID)
+
+			case "SEND_MESSAGE":
+				log.Printf("📝 Raw payload: %s", string(event.Payload))
+				var payload chat.SendMessagePayload
+				if err := json.Unmarshal(event.Payload, &payload); err != nil {
+					log.Printf("❌ Failed to parse payload: %v", err)
+					return
+				}
+				log.Printf("💬 Processing message from [%s] in room [%s]: %s", payload.SenderID, payload.RoomID, payload.Content)
+				if _, err := chatService.ProcessSentMessage(payload); err != nil {
+					log.Printf("❌ Failed to process message: %v", err)
+				}
+			}
+		})
+
+	})
+
+	// --- Chat history REST endpoint ---
+	mux.HandleFunc("/api/chat/history", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		roomID := r.URL.Query().Get("roomId")
+		if roomID == "" {
+			http.Error(w, "Missing roomId", http.StatusBadRequest)
+			return
+		}
+		msgs, err := chatService.GetHistory(roomID)
+		if err != nil {
+			http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(msgs)
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

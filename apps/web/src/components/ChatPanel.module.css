@@ -1,0 +1,81 @@
+.chatPanel {
+  background: var(--white);
+  border: 1px solid var(--lavender-200);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 340px;
+  overflow: hidden;
+}
+
+.messageWindow {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty {
+  color: var(--bark);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.row { display: flex; }
+.me  { justify-content: flex-end; }
+.them { justify-content: flex-start; }
+
+.bubble {
+  max-width: 75%;
+  background: var(--lavender-100);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.me .bubble {
+  background: var(--lavender-300);
+}
+
+.sender {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--lavender-600);
+  display: block;
+  margin-bottom: 2px;
+}
+.text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--navy);
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--lavender-200);
+}
+
+.input {
+  flex: 1;
+  border: 1.5px solid var(--lavender-200);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  outline: none;
+}
+.input:focus { border-color: var(--lavender-400); }
+
+.sendBtn {
+  background: var(--lavender-600);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}

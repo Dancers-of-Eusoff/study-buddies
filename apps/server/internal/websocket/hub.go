@@ -14,7 +14,7 @@ type Event struct {
 type Hub struct {
 	mu         sync.RWMutex
 	rooms      map[string]map[*Client]bool
-	clients    map[string]*Client
+	clients    map[*Client]bool
 	broadcast  chan Event
 	register   chan *Client
 	unregister chan *Client
@@ -23,7 +23,7 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		rooms:      make(map[string]map[*Client]bool),
-		clients:    make(map[string]*Client),
+		clients:    make(map[*Client]bool),
 		broadcast:  make(chan Event),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -35,13 +35,13 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
-			h.clients[client.UserID] = client
+			h.clients[client] = true
 			h.mu.Unlock()
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if _, ok := h.clients[client.UserID]; ok {
-				delete(h.clients, client.UserID)
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
 				h.removeFromAllRooms(client)
 				close(client.send)
 			}
@@ -54,9 +54,8 @@ func (h *Hub) Run() {
 					select {
 					case client.send <- event:
 					default:
-						close(client.send)
-						h.removeFromAllRooms(client)
-						delete(h.clients, client.UserID)
+						// Channel full — drop this client
+						go func(c *Client) { h.unregister <- c }(client)
 					}
 				}
 			}
