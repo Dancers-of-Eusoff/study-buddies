@@ -47,24 +47,23 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
 	roomHandler := rooms.NewHandler(roomService)
 	roomHandler.RegisterRoutes(mux)
 
+	// Not Connected to DB
 	sessionRepo := sessions.NewMemoryRepository()
 	sessionService := sessions.NewService(sessionRepo)
 	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
 
-	// userRepo := users.NewMemoryRepository()
+	// Connected to DB
 	userRepo := users.NewUserRepo(db)
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
-	
-	// Initialise Repos
-	userRepo.CreateUser(users.CreateUserParams{Username: "Tan", Password: "6969", Email: "tan@tantan.tan"})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
