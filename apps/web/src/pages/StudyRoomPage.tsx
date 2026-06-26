@@ -184,7 +184,7 @@ export default function StudyRoomPage() {
 
   const room = roomDetails!.room;
   const members = roomDetails!.members ?? [];
-  const isOwner = room.ownerId === user?.userId;
+  // const isOwner = room.ownerId === user?.userId;
 
   return (
     <div className={styles.page}>
