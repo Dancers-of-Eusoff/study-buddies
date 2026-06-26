@@ -1,6 +1,6 @@
 import type { AuthResponse, User } from '../types';
 
-const BASE = 'http://localhost:8080/api/auth';
+const BASE = `${import.meta.env.VITE_BASE_URL}/auth`;
 
 async function safeJson(res: Response): Promise<Record<string, string>> {
   const text = await res.text();
@@ -26,13 +26,13 @@ function friendlyError(raw: string, fallback: string): string {
 }
 
 export async function registerUser(username: string, password: string): Promise<AuthResponse> {
+  console.log(`YOU ARE GOING TO: ${BASE}`);
   const res = await fetch(`${BASE}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
   const body = await safeJson(res);
-  console.log(`REGISTER SUCC: ${body}`);
   if (!res.ok) throw new Error(friendlyError(body.error ?? '', 'Registration failed, please try again'));
   return body as unknown as AuthResponse;
 }
