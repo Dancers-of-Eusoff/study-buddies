@@ -15,14 +15,14 @@ import (
 
 var allowedOrigins = map[string]bool{
     "http://localhost:5173":					true,
-    "https://study-buddies-red.vercel.app/":	true, // vercel production
+    "https://study-buddies-red.vercel.app":	true, // vercel production
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
         if allowedOrigins[origin] {
-            w.Header().Set("Access-Control-Allow-Origin", "https://study-buddies-red.vercel.app/")
+            w.Header().Set("Access-Control-Allow-Origin", origin)
         }
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
