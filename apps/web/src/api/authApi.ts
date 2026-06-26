@@ -1,6 +1,6 @@
 import type { AuthResponse, User } from '../types';
 
-const BASE = `${import.meta.env.VITE_BASE_URL}/auth`;
+const BASE = `${import.meta.env.VITE_BASE_URL}/api/auth`;
 
 async function safeJson(res: Response): Promise<Record<string, string>> {
   const text = await res.text();

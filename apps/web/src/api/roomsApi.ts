@@ -1,6 +1,6 @@
 import type { Room, RoomDetails, CreateRoomRequest, JoinRoomRequest } from '../types';
 
-const BASE = `${import.meta.env.VITE_BASE_URL}/rooms`;
+const BASE = `${import.meta.env.VITE_BASE_URL}/api/rooms`;
 
 function authHeaders(token: string) {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

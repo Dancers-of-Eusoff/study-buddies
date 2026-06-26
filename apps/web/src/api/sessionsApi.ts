@@ -1,6 +1,6 @@
 import type { Session, FocusInterval, StartSessionRequest, EndSessionRequest, LogIntervalRequest } from '../types';
 
-const BASE = `${import.meta.env.VITE_BASE_URL}/sessions`;
+const BASE = `${import.meta.env.VITE_BASE_URL}/api/sessions`;
 
 function authHeaders(token: string) {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
