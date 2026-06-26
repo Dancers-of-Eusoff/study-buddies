@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
@@ -12,9 +13,17 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var allowedOrigins = map[string]bool{
+    "http://localhost:5173":					true,
+    "https://study-buddies-red.vercel.app/":	true, // vercel production
+}
+
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		origin := r.Header.Get("Origin")
+        if allowedOrigins[origin] {
+            w.Header().Set("Access-Control-Allow-Origin", origin)
+        }
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -39,7 +48,7 @@ func NewDB(connStr string) (*sql.DB, error) {
 
 func main() {
 	// DB connection
-	connStr := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+	connStr := os.Getenv("DATABASE_URL")
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)
