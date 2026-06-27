@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -71,8 +71,15 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 	user, err := s.repo.FindByUsername(req.Username)
 	switch {
 	case err == nil:
-		token, err := s.GenerateToken(user)
-		return *user, token, err
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+			return *&UserDTO{}, "", err
+		}
+		userDTO := &UserDTO{
+			ID: user.ID,
+			Username: user.Username,
+		}
+		token, err := s.GenerateToken(userDTO)
+		return *userDTO, token, err
 	case errors.Is(err, sql.ErrNoRows):
 		return UserDTO{}, "", ErrInvalidAuth
 	default:
