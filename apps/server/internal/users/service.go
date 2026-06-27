@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"strings"
 	"time"
+
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -37,6 +39,7 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 	case err == nil:
 		return UserDTO{}, "", ErrUserExists
 	case errors.Is(err, sql.ErrNoRows):
+		hash, err := 
 		user := &CreateUserParams{
 			Username: req.Username,
 			Password: s.hashPassword(req.Password),
@@ -106,15 +109,15 @@ func (s *Service) GenerateToken(user *UserDTO) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
 }
 
-func (s *Service) hashPassword(password string) string {
-	salt := "sb_salt_2025_"
-	bytes := []byte(salt + password)
-	for i := range bytes {
-		bytes[i] = bytes[i] ^ 0x5A
+func (s *Service) hashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return "", fmt.Errorf("hashing password: %w", err)
 	}
-	return fmt.Sprintf("%x", bytes)
+	return string(hash), nil
 }
 
 func (s *Service) checkPassword(password, hash string) bool {
-	return s.hashPassword(password) == hash
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
