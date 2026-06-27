@@ -39,10 +39,13 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 	case err == nil:
 		return UserDTO{}, "", ErrUserExists
 	case errors.Is(err, sql.ErrNoRows):
-		hash, err := 
+		hash, err := s.hashPassword(req.Password)
+		if err != nil {
+			return UserDTO{}, "", fmt.Errorf("creating user: %w", err)
+		}
 		user := &CreateUserParams{
 			Username: req.Username,
-			Password: s.hashPassword(req.Password),
+			Password: hash,
 		}
 
 		id, err := s.repo.CreateUser(user)
