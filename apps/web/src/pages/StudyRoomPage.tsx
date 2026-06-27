@@ -328,6 +328,7 @@ export default function StudyRoomPage() {
   for (const m of members) {
     memberNames[m.userId] = m.displayName;
   }
+  // const isOwner = room.ownerId === user?.userId;
 
   return (
     <div className={styles.page}>

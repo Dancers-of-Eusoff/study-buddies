@@ -1,15 +1,15 @@
 package users
 
 import (
-	"log"
-	"sync"
-	"strings"
 	"database/sql"
+	"fmt"
+	"strings"
+	"sync"
 )
 
 type Repository interface {
-	CreateUser(user *User) error
-	FindByUsername(username string) (*User, bool)
+	CreateUser(p *CreateUserParams) (string, error)
+	FindByUsername(username string) (*UserDTO, error)
 }
 
 type MemoryRepository struct {
@@ -26,16 +26,30 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) CreateUser(p CreateUserParams) int {
-	var pk int
-	query := `INSERT INTO users (username, password, email)
-		VALUES ($1, $2, $3) RETURNING id`
+func (r *UserRepo) CreateUser(p *CreateUserParams) (string, error) {
+	var pk string
+	query := `INSERT INTO users (username, password)
+		VALUES ($1, $2) RETURNING id`
 
-	err := r.db.QueryRow(query, p.Username, p.Password, p.Email).Scan(&pk)
+	err := r.db.QueryRow(query, p.Username, p.Password).Scan(&pk)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	return pk
+	return pk, nil
+}
+
+func (r *UserRepo) FindByUsername(username string) (*UserDTO, error) {
+	var u UserDTO
+	query := `SELECT id, username FROM users WHERE username = $1`
+
+	err := r.db.QueryRow(query, username).Scan(&u.ID, &u.Username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return &UserDTO{}, fmt.Errorf("user not found: %w", err)
+		}
+		return &UserDTO{}, err
+	}
+	return &u, nil
 }
 // Connect to Postgres: end
 
