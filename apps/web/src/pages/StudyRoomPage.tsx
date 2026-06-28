@@ -5,6 +5,7 @@ import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
 import { startSession, endSession } from '../api/sessionsApi';
+import { getChatHistory, type ChatMessage } from '../api/chatApi';
 import { useTimer } from '../hooks/useTimer';
 import styles from "./StudyRoomPage.module.css";
 import btn from '../components/Buttons.module.css';
@@ -18,82 +19,218 @@ const FOCUS_STATES: { state: FocusState; label: string; emoji: string; colorVar:
   { state: 'PAUSED',     label: 'Paused',     emoji: '⏸️', colorVar: 'var(--bark)' },
 ];
 
-function DestressBtn () {
+// ─── Destress button ────────────────────────────────────────────────────────
+
+function DestressBtn() {
   const [count, setCount] = useState(0);
   return (
-    <button className={ styles.destressBtn } onClick={() => setCount(c => c + 1)}>{ count }</button>
-  )
+    <button className={styles.destressBtn} onClick={() => setCount(c => c + 1)}>{count}</button>
+  );
 }
 
-function Flashbang({ myFocusState, setMyFocusState } : { myFocusState: FocusState; setMyFocusState: Dispatch<SetStateAction<FocusState>> }) {
-  return myFocusState == 'DISTRACTED' && (
-    <div className={ styles.popup }>
-      <div className={ styles.flashbang }>
-        <button className={ styles.closeButton } onClick={() => setMyFocusState("FOCUSED")}>Close</button>
-        <video src="/flashbangs/sgboleh.mp4" autoPlay className={ styles.flashbangVideo } />
+// ─── Flashbang popup ────────────────────────────────────────────────────────
+
+function Flashbang({ myFocusState, setMyFocusState }: { myFocusState: FocusState; setMyFocusState: Dispatch<SetStateAction<FocusState>> }) {
+  return myFocusState === 'DISTRACTED' && (
+    <div className={styles.popup}>
+      <div className={styles.flashbang}>
+        <button className={styles.closeButton} onClick={() => setMyFocusState("FOCUSED")}>Close</button>
+        <video src="/flashbangs/sgboleh.mp4" autoPlay className={styles.flashbangVideo} />
       </div>
     </div>
-  )
+  );
 }
 
-const LookAtMe = memo(({ myFocusState, setMyFocusState } : { myFocusState: FocusState, setMyFocusState: (f: FocusState) => void }) => {
-  const objectDetectorRef= useRef<ObjectDetector>(null);
+// ─── Camera / object detection ───────────────────────────────────────────────
+
+const LookAtMe = memo(({ myFocusState, setMyFocusState }: { myFocusState: FocusState; setMyFocusState: (f: FocusState) => void }) => {
+  const objectDetectorRef = useRef<ObjectDetector>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-      const init = async () => {
-          const vision = await FilesetResolver.forVisionTasks(
-              "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
-          );
+    const init = async () => {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+      );
+      objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: "/models/efficientdet_lite0.tflite" },
+        scoreThreshold: 0.67,
+        runningMode: "VIDEO",
+        categoryAllowlist: ["cell phone"]
+      });
+    };
 
-          objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
-              baseOptions: {
-                  modelAssetPath: "/models/efficientdet_lite0.tflite"
-              },
-              scoreThreshold: 0.67,
-              runningMode: "VIDEO",
-              categoryAllowlist: ["cell phone"]
-          })
+    const startCamera = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        predictWebcam();
       }
+    };
 
-      const startCamera = async () => {
-          const stream = await navigator.mediaDevices.getUserMedia({
-              video: true
-          });
-
-          if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              await videoRef.current.play();
-              predictWebcam();
-          }
-      };
-
-      function predictWebcam() {
-          if (objectDetectorRef.current && videoRef.current) {
-            const startTimeMs = performance.now();
-            const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
-            console.log(`Detections result: ${results.detections[0]}\nFocus state: ${myFocusState}`);
-            
-            if (results.detections.length > 0 && myFocusState !== "DISTRACTED") {
-              setMyFocusState("DISTRACTED");
-            }
-            
-            requestAnimationFrame(predictWebcam);
-          }
+    function predictWebcam() {
+      if (objectDetectorRef.current && videoRef.current) {
+        const startTimeMs = performance.now();
+        const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
+        console.log(`Detections result: ${results.detections[0]}\nFocus state: ${myFocusState}`);
+        if (results.detections.length > 0 && myFocusState !== "DISTRACTED") {
+          setMyFocusState("DISTRACTED");
+        }
+        requestAnimationFrame(predictWebcam);
       }
-      
-      init();
-      startCamera();
+    }
+
+    init();
+    startCamera();
   }, []);
 
   return (
-      <>
-          <div className={styles.focusVideo}>
-              <video ref={videoRef} autoPlay playsInline />
-          </div>
-      </>
-  )
+    <div className={styles.focusVideo}>
+      <video ref={videoRef} autoPlay playsInline />
+    </div>
+  );
 });
+
+// ─── Chat panel ──────────────────────────────────────────────────────────────
+
+interface ChatPanelProps {
+  roomId: string;
+  // userId -> username map built from room members in parent
+  memberNames: Record<string, string>;
+}
+
+function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
+  const { user, token } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [typedText, setTypedText] = useState('');
+  const socketRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const userId = user?.userId ?? '';
+  // user.username is the correct field — not displayName
+  const myUsername = user?.username ?? userId;
+
+  // Resolve a senderId to a human-readable name
+  function resolveName(senderId: string): string {
+    if (senderId === userId) return myUsername;
+    // memberNames map has displayName from the room member list
+    return memberNames[senderId] ?? `user_${senderId.slice(-6)}`;
+  }
+
+  // Load chat history — only fires when token is ready
+  useEffect(() => {
+    if (!token || !roomId) return;
+    getChatHistory(token, roomId)
+      .then(setMessages)
+      .catch((err) => console.error('Error loading chat history:', err));
+  }, [roomId, token]);
+
+  // WebSocket connection
+  useEffect(() => {
+    if (!userId) return;
+    const ws = new WebSocket(`ws://localhost:8080/api/ws?userId=${encodeURIComponent(userId)}`);
+    socketRef.current = ws;
+
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomId }));
+
+    ws.onmessage = (event) => {
+      try {
+        const frame = JSON.parse(event.data);
+        if (frame.type === 'NEW_MESSAGE') {
+          // frame.payload is already a parsed object after JSON.parse(event.data)
+          const incoming: ChatMessage = frame.payload as ChatMessage;
+          setMessages((prev) => {
+            // Deduplicate by server-assigned message ID
+            if (prev.some((m) => m.id === incoming.id)) return prev;
+            // Swap out the matching optimistic placeholder for our own messages
+            if (incoming.senderId === userId) {
+              const idx = prev.findIndex(
+                (m) => m.id.startsWith('optimistic-') && m.content === incoming.content
+              );
+              if (idx !== -1) {
+                const updated = [...prev];
+                updated[idx] = incoming;
+                return updated;
+              }
+            }
+            return [...prev, incoming];
+          });
+        }
+      } catch (err) {
+        console.error('WS parse error:', err);
+      }
+    };
+
+    return () => ws.close();
+  }, [roomId, userId]);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!typedText.trim() || !socketRef.current) return;
+
+    const content = typedText.trim();
+
+    socketRef.current.send(JSON.stringify({
+      type: 'SEND_MESSAGE',
+      roomId,
+      payload: { roomId, senderId: userId, content },
+    }));
+
+    // Show your own message immediately — swapped for real server message on echo
+    setMessages((prev) => [...prev, {
+      id: `optimistic-${crypto.randomUUID()}`,
+      roomId: roomId!,
+      senderId: userId,
+      content,
+      timestamp: new Date().toISOString(),
+    }]);
+
+    setTypedText('');
+  };
+
+  return (
+    <div className={styles.chatPanel}>
+      <div className={styles.chatMessageWindow}>
+        {messages.length === 0 ? (
+          <p className={styles.chatEmpty}>No messages yet — say hi! 👋</p>
+        ) : (
+          messages.map((msg) => {
+            const isMe = msg.senderId === userId;
+            return (
+              <div key={msg.id} className={`${styles.chatRow} ${isMe ? styles.chatMe : styles.chatThem}`}>
+                <div className={styles.chatBubble}>
+                  <span className={styles.chatSender}>
+                    {isMe ? '🐼' : '🐱'} {resolveName(msg.senderId)}
+                  </span>
+                  <p className={styles.chatText}>{msg.content}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <form onSubmit={handleSend} className={styles.chatInputRow}>
+        <input
+          type="text"
+          value={typedText}
+          onChange={(e) => setTypedText(e.target.value)}
+          placeholder="Message your study buddies..."
+          className={styles.chatInput}
+        />
+        <button type="submit" className={styles.chatSendBtn}>Send</button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function StudyRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -113,6 +250,7 @@ export default function StudyRoomPage() {
   const [copied, setCopied] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const sessionActive = session !== null && session.status === 'ACTIVE';
   const { formatted: elapsed, elapsed: elapsedSecs } = useTimer(sessionActive);
@@ -138,7 +276,7 @@ export default function StudyRoomPage() {
     if (!token || !user || !roomId) return;
     setSessionLoading(true); setSessionError('');
     try {
-      const s = await startSession(token, { userId: user.userId, roomId: roomId });
+      const s = await startSession(token, { userId: user.userId, roomId });
       setSession(s);
     } catch (e: unknown) {
       setSessionError(e instanceof Error ? e.message : 'Failed to start session');
@@ -184,6 +322,12 @@ export default function StudyRoomPage() {
 
   const room = roomDetails!.room;
   const members = roomDetails!.members ?? [];
+
+  // Build userId -> displayName lookup to pass into ChatPanel
+  const memberNames: Record<string, string> = {};
+  for (const m of members) {
+    memberNames[m.userId] = m.displayName;
+  }
   // const isOwner = room.ownerId === user?.userId;
 
   return (
@@ -207,9 +351,15 @@ export default function StudyRoomPage() {
           </span>
         </div>
         <div className={styles.navRight}>
-          {/* {room.type === 'PRIVATE' && isOwner && ( */}
-            <button onClick={() => setShowInviteCode((p) => !p)} className={styles.inviteToggleBtn}>🔑 Invite code</button>
-          {/* )} */}
+          <button onClick={() => setShowInviteCode((p) => !p)} className={styles.inviteToggleBtn}>
+            🔑 Invite code
+          </button>
+          <button
+            onClick={() => setShowChat((p) => !p)}
+            className={`${styles.chatToggleBtn} ${showChat ? styles.chatToggleBtnActive : ''}`}
+          >
+            💬 Chat {showChat ? '✕' : ''}
+          </button>
         </div>
       </nav>
 
@@ -290,6 +440,22 @@ export default function StudyRoomPage() {
 
         {/* Right col */}
         <div className={styles.rightCol}>
+
+          {/* Chat panel — only mounts when token is ready to guarantee history loads */}
+          {showChat && roomId && token && (
+            <div className={styles.panel}>
+              <div className={styles.panelHeader}>
+                <span className={styles.panelHeaderEmoji}>💬</span>
+                <h2 className={styles.panelHeaderTitle}>Room Chat</h2>
+                <button
+                  onClick={() => setShowChat(false)}
+                  className={styles.chatClosePanelBtn}
+                  aria-label="Close chat"
+                >✕</button>
+              </div>
+              <ChatPanel roomId={roomId} memberNames={memberNames} />
+            </div>
+          )}
 
           {/* Members */}
           <div className={styles.panel}>
