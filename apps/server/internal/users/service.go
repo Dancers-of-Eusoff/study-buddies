@@ -58,7 +58,7 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 			Username: req.Username,
 		}
 
-		token, err := s.GenerateToken(userDTO)
+		token, err := s.GenerateAccessToken(userDTO)
 
 		return *userDTO, token, err
 	default:
@@ -71,21 +71,23 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 	user, err := s.repo.FindByUsername(req.Username)
 	switch {
 	case err == nil:
-		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-			return *&UserDTO{}, "", err
+		if !s.checkPassword(req.Password, user.PasswordHash){
+			return UserDTO{}, "", ErrInvalidAuth
 		}
 		userDTO := &UserDTO{
 			ID: user.ID,
 			Username: user.Username,
 		}
-		token, err := s.GenerateToken(userDTO)
-		return *userDTO, token, err
+		accessToken, err := s.GenerateAccessToken(userDTO)
+		if err != nil {
+			return UserDTO{}, "", fmt.Errorf("access token: %w", err)
+		}
+		return UserDTO{}, accessToken, err
 	case errors.Is(err, sql.ErrNoRows):
 		return UserDTO{}, "", ErrInvalidAuth
 	default:
 		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
 	}
-
 }
 
 func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
@@ -106,12 +108,25 @@ func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-func (s *Service) GenerateToken(user *UserDTO) (string, error) {
+func (s *Service) GenerateAccessToken(user *UserDTO) (string, error) {
 	claims := &Claims{
 		UserID:   user.ID,
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   user.ID,
+		},
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
+}
+
+func (s *Service) GenerateRefreshToken(user *UserDTO) (string, error) {
+	claims := &Claims{
+		UserID:   user.ID,
+		Username: user.Username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   user.ID,
 		},
