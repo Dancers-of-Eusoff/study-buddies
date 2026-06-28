@@ -42,7 +42,7 @@ function ChatComponent() {
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const roomId = roomDetails?.room?.id;
-    const userId = user?.id || "anonymous_user";
+    const userId = user?.userId || "anonymous_user";
 
     // 1. Fetch historical messages on room load
     useEffect(() => {

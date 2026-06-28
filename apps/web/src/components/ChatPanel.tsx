@@ -14,7 +14,7 @@ export default function ChatPanel({ roomId }: Props) {
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const userId = user?.id ?? 'anonymous_user';
+  const userId = user?.userId ?? 'anonymous_user';
 
   // Load history
   useEffect(() => {
