@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -12,24 +12,22 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/websocket"
+	"github.com/joho/godotenv"
 
 	_ "github.com/lib/pq"
 )
 
-func corsMiddleware(next http.Handler) http.Handler {	
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Upgrade") == "websocket" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
 var allowedOrigins = map[string]bool{
-    "http://localhost:5173":					true,
+	"http://localhost:5173": true,
     "https://study-buddies-red.vercel.app":	true, // vercel production
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		origin := r.Header.Get("Origin")
         if allowedOrigins[origin] {
             w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -58,7 +56,11 @@ func NewDB(connStr string) (*sql.DB, error) {
 
 func main() {
 	// DB connection
-	connStr := os.Getenv("DATABASE_URL")
+    if err := godotenv.Load(".env.local"); err != nil {
+        log.Println("no .env.local file found") // non-fatal, prod uses real env vars
+    }
+
+    connStr := os.Getenv("DATABASE_URL")
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -146,16 +148,6 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(msgs)
 	})
-	// DB connection
-	// connStr := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
-	// db, err := NewDB(connStr)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// Initialise Repos
-	// usersRepo := users.NewUserRepo(db)
-	// usersRepo.CreateUser(users.CreateUserParams{Username: "Tan", Password: "6969", Email: "tan@tantan.tan"})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
