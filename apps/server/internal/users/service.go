@@ -1,6 +1,8 @@
 package users
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -20,43 +22,57 @@ func NewService(repo Repository) *Service {
 	}
 }
 
-func (s *Service) Register(req RegisterRequest) (User, string, error) {
+func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 	req.Username = strings.TrimSpace(req.Username)
 
 	if len(req.Username) < 3 || len(req.Username) > 20 {
-		return User{}, "", ErrUsernameLength
+		return UserDTO{}, "", ErrUsernameLength
 	}
 	if len(req.Password) < 6 {
-		return User{}, "", ErrPasswordLength
+		return UserDTO{}, "", ErrPasswordLength
 	}
 
-	if _, exists := s.repo.FindByUsername(req.Username); exists {
-		return User{}, "", ErrUserExists
+	_, err := s.repo.FindByUsername(req.Username)
+	switch {
+	case err == nil:
+		return UserDTO{}, "", ErrUserExists
+	case errors.Is(err, sql.ErrNoRows):
+		user := &CreateUserParams{
+			Username: req.Username,
+			Password: s.hashPassword(req.Password),
+		}
+
+		id, err := s.repo.CreateUser(user)
+		if err != nil {
+			return UserDTO{}, "", err
+		}
+
+		userDTO := &UserDTO{
+			ID: id,
+			Username: req.Username,
+		}
+
+		token, err := s.GenerateToken(userDTO)
+
+		return *userDTO, token, err
+	default:
+		return UserDTO{}, "", fmt.Errorf("checking existing user: %w", err)
 	}
 
-	user := &User{
-		ID:           fmt.Sprintf("user_%d", time.Now().UnixNano()),
-		Username:     req.Username,
-		PasswordHash: s.hashPassword(req.Password),
-		CreatedAt:    time.Now(),
-	}
-
-	if err := s.repo.CreateUser(user); err != nil {
-		return User{}, "", err
-	}
-
-	token, err := s.GenerateToken(user)
-	return *user, token, err
 }
 
-func (s *Service) Login(req LoginRequest) (User, string, error) {
-	user, exists := s.repo.FindByUsername(req.Username)
-	if !exists || !s.checkPassword(req.Password, user.PasswordHash) {
-		return User{}, "", ErrInvalidAuth
+func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
+	user, err := s.repo.FindByUsername(req.Username)
+	switch {
+	case err == nil:
+		token, err := s.GenerateToken(user)
+		return *user, token, err
+	case errors.Is(err, sql.ErrNoRows):
+		return UserDTO{}, "", ErrInvalidAuth
+	default:
+		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
 	}
 
-	token, err := s.GenerateToken(user)
-	return *user, token, err
 }
 
 func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
@@ -77,7 +93,7 @@ func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-func (s *Service) GenerateToken(user *User) (string, error) {
+func (s *Service) GenerateToken(user *UserDTO) (string, error) {
 	claims := &Claims{
 		UserID:   user.ID,
 		Username: user.Username,

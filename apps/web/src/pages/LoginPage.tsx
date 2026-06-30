@@ -1,9 +1,12 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import AuthCard from '../components/AuthCard';
 import FormField from '../components/FormField';
 import { loginUser } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import btn from '../components/Buttons.module.css';
+import styles from './LoginPage.module.css';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -71,13 +74,7 @@ export default function LoginPage() {
         />
 
         {apiError && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: '#fef2f2', border: '1.5px solid #fecaca',
-            color: '#dc2626', padding: '11px 14px',
-            borderRadius: 20, fontSize: '0.88rem',
-            fontWeight: 600, marginBottom: 12,
-          }}>
+          <div className={styles.apiError}>
             😓 {apiError}
           </div>
         )}
@@ -85,18 +82,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading || success}
-          style={{
-            width: '100%', padding: '15px',
-            background: success
-              ? 'linear-gradient(135deg, #4ade80, #22c55e)'
-              : 'linear-gradient(135deg, #8b79e8, #6c5dd3)',
-            border: 'none', borderRadius: 20,
-            color: 'white', fontFamily: "'Nunito', sans-serif",
-            fontSize: '1rem', fontWeight: 800, cursor: loading || success ? 'not-allowed' : 'pointer',
-            marginTop: 8, opacity: loading || success ? 0.85 : 1,
-            boxShadow: '0 6px 20px rgba(108,93,211,0.35)',
-            transition: 'all 0.2s ease',
-          }}
+          className={`${btn.submit} ${success ? btn.submitSuccess : ''}`}
         >
           {success ? '✅ Logged in! Redirecting...' : loading ? 'Logging in...' : '🌸 Log me in'}
         </button>

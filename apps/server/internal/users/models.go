@@ -41,6 +41,24 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type CreateUserParams struct {
+	Username string
+	Password string
+}
+
+type QueryUserDTO struct {
+	ID            int       `json:"id" db:"id"`
+	Username      string    `json:"username" db:"username"`
+	ProfilePicURL *string    `json:"profile_pic_url" db:"profile_pic_url"`
+	Bio           *string    `json:"bio" db:"bio"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+}
+
+type UserDTO struct {
+	ID			string	`json:"id"`
+	Username	string	`json:"username"`
+}
+
 var (
 	ErrUserExists       = errors.New("username already taken")
 	ErrInvalidAuth      = errors.New("invalid username or password")
