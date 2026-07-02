@@ -49,9 +49,7 @@ const LookAtMe = memo(({ myFocusState, setMyFocusState }: { myFocusState: FocusS
 
   useEffect(() => {
     const init = async () => {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
-      );
+      const vision = await FilesetResolver.forVisionTasks("/wasm");
       objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
         baseOptions: { modelAssetPath: "/models/efficientdet_lite0.tflite" },
         scoreThreshold: 0.67,
@@ -129,7 +127,8 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
   // WebSocket connection
   useEffect(() => {
     if (!userId) return;
-    const ws = new WebSocket(`ws://localhost:8080/api/ws?userId=${encodeURIComponent(userId)}`);
+    const WS_URL = `ws://${import.meta.env.VITE_BASE_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
+    const ws = new WebSocket(WS_URL);
     socketRef.current = ws;
 
     ws.onopen = () => ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomId }));
@@ -254,7 +253,7 @@ export default function StudyRoomPage() {
 
   const sessionActive = session !== null && session.status === 'ACTIVE';
   const { formatted: elapsed, elapsed: elapsedSecs } = useTimer(sessionActive);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadRoom = useCallback(async () => {
     if (!token || !roomId) return;
@@ -268,8 +267,8 @@ export default function StudyRoomPage() {
 
   useEffect(() => {
     loadRoom();
-    pollRef.current = setInterval(loadRoom, 10000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    // pollRef.current = setInterval(loadRoom, 10000);
+    // return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadRoom]);
 
   async function handleStartSession() {

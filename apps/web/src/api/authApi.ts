@@ -26,7 +26,6 @@ function friendlyError(raw: string, fallback: string): string {
 }
 
 export async function registerUser(username: string, password: string): Promise<AuthResponse> {
-  console.log(`YOU ARE GOING TO: ${BASE}`);
   const res = await fetch(`${BASE}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
