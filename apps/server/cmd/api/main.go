@@ -2,24 +2,32 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/websocket"
+	"github.com/joho/godotenv"
 
 	_ "github.com/lib/pq"
 )
 
 var allowedOrigins = map[string]bool{
-    "http://localhost:5173":					true,
+	"http://localhost:5173": true,
     "https://study-buddies-red.vercel.app":	true, // vercel production
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		origin := r.Header.Get("Origin")
         if allowedOrigins[origin] {
             w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -48,7 +56,11 @@ func NewDB(connStr string) (*sql.DB, error) {
 
 func main() {
 	// DB connection
-	connStr := os.Getenv("DATABASE_URL")
+    if err := godotenv.Load(".env.local"); err != nil {
+        log.Println("no .env.local file found") // non-fatal, prod uses real env vars
+    }
+
+    connStr := os.Getenv("DATABASE_URL")
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -56,6 +68,15 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	// --- WebSocket Infrastructure ---
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+
+	// --- Chat Service (wired to WebSocket hub) ---
+	chatRepo := chat.NewMemoryRepository()
+	chatService := chat.NewService(chatRepo, wsHub)
+
+	// --- Existing Feature Packages ---
 	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
@@ -73,6 +94,60 @@ func main() {
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
+
+	// --- WebSocket endpoint ---
+	wsHandler := websocket.NewHandler(wsHub)
+	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
+		if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.WriteHeader(http.StatusNoContent)
+		return
+		}
+		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
+		log.Printf("📨 Event [%s] roomId [%s] from user [%s]", event.Type, event.RoomID, client.UserID)
+
+		switch event.Type {
+
+		case "JOIN_ROOM":
+			wsHub.SubscribeToRoom(event.RoomID, client)
+			log.Printf("✅ User [%s] joined room [%s]", client.UserID, event.RoomID)
+
+		case "SEND_MESSAGE":
+			var payload chat.SendMessagePayload
+			if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			log.Printf("❌ SEND_MESSAGE parse error: %v", err)
+			return
+			}
+			if _, err := chatService.ProcessSentMessage(payload); err != nil {
+			log.Printf("❌ ProcessSentMessage error: %v", err)
+			}
+		}
+		})
+	})
+
+	// --- Chat history REST endpoint ---
+	mux.HandleFunc("/api/chat/history", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		roomID := r.URL.Query().Get("roomId")
+		if roomID == "" {
+			http.Error(w, "Missing roomId", http.StatusBadRequest)
+			return
+		}
+		msgs, err := chatService.GetHistory(roomID)
+		if err != nil {
+			http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(msgs)
+	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

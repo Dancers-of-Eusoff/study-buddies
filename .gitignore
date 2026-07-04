@@ -104,3 +104,9 @@ generated/
 uploads/
 .vercel
 .env*
+screenshots/
+
+# =========================
+# Makefile
+# =========================
+Makefile
