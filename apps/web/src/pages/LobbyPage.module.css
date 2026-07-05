@@ -78,10 +78,15 @@
   border-radius: var(--radius-pill);
 }
 
+.userChip:hover {
+  background: var(--sky);
+}
+
 .userChipName {
   font-weight: 700;
   font-size: 1.056rem;
   color: var(--ink);
+  text-decoration: none;
 }
 
 /* --- Content --- */

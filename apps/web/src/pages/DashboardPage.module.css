@@ -1,0 +1,652 @@
+.page {
+  min-height: 100vh;
+  background: var(--cream);
+  font-family: var(--font-body);
+  position: relative;
+  overflow: hidden;
+}
+
+.blobSky {
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--sky-light) 0%, transparent 70%);
+  top: -180px;
+  right: -120px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.blobTan {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--tan) 0%, transparent 70%);
+  bottom: -100px;
+  left: -80px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.7;
+}
+
+/* --- Nav --- */
+.nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 40px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--tan-deep);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.logoEmoji {
+  font-size: 1.68rem;
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-size: 1.56rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* --- Layout --- */
+.layout {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(230px, 20%) 1fr;
+  gap: 24px;
+  align-items: start;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 32px 60px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  background: var(--white);
+  border: 2px solid var(--tan-deep);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md) var(--tan-deep);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: sticky;
+  top: 24px;
+}
+
+.avatarRing {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--sky-light);
+  border: 3px solid var(--sky);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.avatarEmoji {
+  font-size: 3rem;
+}
+
+.username {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+
+.bio {
+  font-size: 0.95rem;
+  color: var(--bark);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.5;
+  margin: 6px 0 20px;
+}
+
+.editProfileBtn {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.statsList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--cream);
+  border: 1px solid var(--tan-deep);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.statIcon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.statLabel {
+  flex: 1;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--bark);
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sky-deep);
+}
+
+/* --- Main column --- */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.card {
+  background: var(--white);
+  border: 2px solid var(--tan-deep);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md) var(--tan-deep);
+  padding: 24px 28px 28px;
+}
+
+.cardHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Tabs --- */
+.tabRow {
+  display: flex;
+  gap: 8px;
+  background: var(--cream);
+  border: 1.5px solid var(--tan-deep);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+
+.tab,
+.tabActive {
+  border-radius: var(--radius-pill);
+  padding: 7px 18px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--bark);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--sky-deep);
+}
+
+.tabActive {
+  background: var(--sky);
+  color: var(--white);
+  box-shadow: 0 2px 0 var(--sky-deep);
+}
+
+/* --- Summary body --- */
+.summaryBody {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1150px) {
+  .summaryBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+.calendarCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rangeLabel {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: var(--ink);
+  background: var(--sky-light);
+  border: 1px solid var(--sky);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+}
+
+.calendarWrap :global(.react-calendar) {
+  width: 100%;
+  border: 1.5px solid var(--tan-deep);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  background: var(--cream);
+  padding: 8px;
+  line-height: 1.2;
+}
+
+.calendarWrap :global(.react-calendar__navigation button) {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 0.95rem;
+  min-width: 32px;
+  background: none;
+}
+
+.calendarWrap :global(.react-calendar__navigation button:hover) {
+  background: var(--sky-light);
+  border-radius: 8px;
+}
+
+.calendarWrap :global(.react-calendar__month-view__weekdays) {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--bark);
+  text-transform: uppercase;
+}
+
+.calendarWrap :global(.react-calendar__month-view__weekdays abbr) {
+  text-decoration: none;
+}
+
+.calendarWrap :global(.react-calendar__tile) {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 4px;
+}
+
+.calendarWrap :global(.react-calendar__tile:enabled:hover) {
+  background: var(--sky-light);
+}
+
+.calendarWrap :global(.react-calendar__tile--now) {
+  background: var(--tan);
+}
+
+.calendarWrap :global(.react-calendar__tile--active) {
+  background: var(--sky);
+  color: var(--white);
+}
+
+.calendarWrap :global(.react-calendar__tile.tileInWeek) {
+  background: var(--sky-light);
+}
+
+.calendarWrap :global(.react-calendar__year-view__months__month) {
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+/* --- Charts --- */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.chartCardFull {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chartBox {
+  background: var(--cream);
+  border: 1.5px solid var(--tan-deep);
+  border-radius: var(--radius-md);
+  padding: 14px 12px 6px;
+}
+
+.chartTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--bark);
+  margin-bottom: 6px;
+  padding-left: 4px;
+}
+
+.legendRow {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--bark);
+}
+
+.legendDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+/* --- Memes --- */
+.addMemeBtn {
+  white-space: nowrap;
+}
+
+.memeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.memeCard {
+  background: var(--cream);
+  border: 2px solid var(--tan-deep);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm) var(--tan-deep);
+  transition: transform 0.12s ease;
+}
+
+.memeCard:hover {
+  transform: translateY(-2px);
+}
+
+.memeVisual {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border-bottom: 1.5px solid var(--tan-deep);
+  overflow: hidden;
+}
+
+.memeEmojiBig {
+  font-size: 3.4rem;
+}
+
+.memeImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memeCaption {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 10px 10px 2px;
+  line-height: 1.3;
+}
+
+.memeMeta {
+  font-size: 0.74rem;
+  color: var(--bark-light);
+  font-weight: 700;
+  padding: 0 10px 10px;
+  margin-top: auto;
+}
+
+.addMemeCard {
+  border: 2px dashed var(--tan-deep);
+  border-radius: var(--radius-md);
+  background: transparent;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--bark);
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.addMemeCard:hover {
+  border-color: var(--sky);
+  color: var(--sky-deep);
+  background: var(--sky-light);
+}
+
+.addMemePlus {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+/* --- Modal (add meme) --- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(46, 42, 34, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modalCard {
+  background: var(--white);
+  border: 2px solid var(--tan-deep);
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-lg) var(--tan-deep);
+  max-height: 90vh;
+  overflow-y: auto;
+  font-family: var(--font-body);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.modalHeaderEmoji {
+  font-size: 2.16rem;
+}
+
+.modalHeaderTitle {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+}
+
+.modalCloseBtn {
+  background: var(--cream);
+  border: none;
+  color: var(--bark);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.modalCloseBtn:hover {
+  background: var(--bark);
+  color: var(--cream);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.fieldLabel {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.input,
+.textarea {
+  padding: 11px 14px;
+  border: 2px solid var(--tan-deep);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--white);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 4px var(--sky-light);
+}
+
+.fileInputBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px dashed var(--tan-deep);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  cursor: pointer;
+  color: var(--bark);
+  font-weight: 700;
+  font-size: 0.95rem;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.fileInputBtn:hover {
+  border-color: var(--sky);
+  color: var(--sky-deep);
+}
+
+.imagePreviewWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.imagePreview {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  border: 1.5px solid var(--tan-deep);
+}
+
+.orDivider {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--bark-light);
+  margin: 12px 0;
+}
+
+.emojiPickRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emojiOption,
+.emojiOptionActive {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--cream);
+  border: 2px solid var(--tan-deep);
+}
+
+.emojiOptionActive {
+  border: 2px solid var(--sky);
+  background: var(--sky-light);
+}

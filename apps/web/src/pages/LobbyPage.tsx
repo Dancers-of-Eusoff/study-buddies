@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode, InputHTMLAttributes } from 'react';
-import { useNavigate } from 'react-router';
+import { NavLink, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { listPublicRooms, createRoom, joinRoom } from '../api/roomsApi';
 import type { Room, CreateRoomRequest } from '../types';
@@ -112,10 +112,10 @@ export default function LobbyPage() {
           <span className={styles.logoText}>Study Buddies</span>
         </div>
         <div className={styles.navActions}>
-          <div className={styles.userChip}>
-            <span>🐼</span>
-            <span className={styles.userChipName}>{user?.username}</span>
-          </div>
+            <NavLink to="/dashboard" className={styles.userChip}>
+                <span>🐼</span>
+                <span className={styles.userChipName}>{user?.username}</span>
+            </NavLink>
           <button onClick={logout} className={btn.ghost}>Log out</button>
         </div>
       </nav>
