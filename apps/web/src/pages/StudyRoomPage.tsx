@@ -35,7 +35,7 @@ function Flashbang({ myFocusState, setMyFocusState }: { myFocusState: FocusState
     <div className={styles.popup}>
       <div className={styles.flashbang}>
         <button className={styles.closeButton} onClick={() => setMyFocusState("FOCUSED")}>Close</button>
-        <video src="/flashbangs/sgboleh.mp4" autoPlay className={styles.flashbangVideo} />
+        <video src="https://res.cloudinary.com/jlixjhrm/video/upload/v1783512025/gahdyum_a93h6l.webm" autoPlay className={styles.flashbangVideo} />
       </div>
     </div>
   );
