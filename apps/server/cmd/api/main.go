@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
+	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
@@ -94,6 +95,9 @@ func main() {
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
+
+	// dashboardRepo := dashboards.NewDashboardRepo(db)
+	// dashboardService := dashboards.NewService(dashboardRepo)
 
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)

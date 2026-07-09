@@ -4,7 +4,7 @@ CREATE TABLE memes (
     uploader_id UUID REFERENCES users(id),
     title VARCHAR NOT NULL,
     video_url VARCHAR NOT NULL,
-    thumbnail_url VARCHAR,
+    thumbnail_url VARCHAR NOT NULL,
     is_public BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
