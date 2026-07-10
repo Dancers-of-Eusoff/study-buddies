@@ -8,3 +8,7 @@ type MemesDTO struct {
 	ThumbnailURL	string		`json:"thumbnail_url" db:"thumbnail_url"`
 	CreatedAt 		time.Time	`json:"created_at" db:"created_at"`
 }
+
+type DashboardRequest struct {
+	UserID	string	`json:"user_id"`
+}

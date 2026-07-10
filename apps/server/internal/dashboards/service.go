@@ -1,0 +1,14 @@
+package dashboards
+
+type Service struct {
+	repo Repository
+}
+
+func NewService(repo Repository) *Service {
+	return &Service{ repo: repo }
+}
+
+func (s *Service) GetMemes(userId string) (*[]MemesDTO, error) {
+	memes, err := s.repo.GetMemesByUser(userId)
+	return memes, err
+}

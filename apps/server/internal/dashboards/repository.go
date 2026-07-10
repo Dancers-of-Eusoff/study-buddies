@@ -3,7 +3,7 @@ package dashboards
 import "database/sql"
 
 type Repository interface {
-	GetMemes(userId string) ([]MemesDTO, error)
+	GetMemesByUser(userId string) (*[]MemesDTO, error)
 }
 
 type DashboardRepo struct {
@@ -14,7 +14,7 @@ func NewDashboardRepo(db *sql.DB) *DashboardRepo {
 	return &DashboardRepo{db: db}
 }
 
-func (r *DashboardRepo) GetMemes(userId string) (*[]MemesDTO, error) {
+func (r *DashboardRepo) GetMemesByUser(userId string) (*[]MemesDTO, error) {
 	var memes []MemesDTO
 	query := `SELECT id, title, video_url, thumbnail_url, created_at FROM memes
 			WHERE uploader_id = $1 OR is_public`
