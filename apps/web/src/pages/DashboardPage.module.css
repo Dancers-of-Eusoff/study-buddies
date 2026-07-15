@@ -508,6 +508,12 @@
   font-family: var(--font-body);
 }
 
+.modalCard video {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+}
+
 .modalHeader {
   display: flex;
   align-items: center;

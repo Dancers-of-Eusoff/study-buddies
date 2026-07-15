@@ -26,6 +26,7 @@ func (r *DashboardRepo) GetMemesByUser(userId string) (*[]MemesDTO, error) {
 	for rows.Next() {
 		var meme MemesDTO
 		if err := rows.Scan(
+			&meme.ID,
 			&meme.Title,
 			&meme.VideoURL,
 			&meme.ThumbnailURL,

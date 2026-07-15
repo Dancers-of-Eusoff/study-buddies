@@ -12,22 +12,25 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-
-// NOTE: this page needs two extra packages that aren't in the other pages yet:
-//   npm install recharts react-calendar
-// Everything below is hardcoded/mock data — no backend calls are made.
-// Swap the MOCK_* constants and the get*() generator functions for real
-// API data whenever the backend endpoints are ready.
+import { getMyDashboard } from '../api/dashboardApi';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
 
+// interface MemeItem {
+//   id: string;
+//   caption: string;
+//   emoji?: string;
+//   imageUrl?: string;
+//   addedBy: string;
+//   addedAt: string;
+// }
+
 interface MemeItem {
-  id: string;
-  caption: string;
-  emoji?: string;
-  imageUrl?: string;
-  addedBy: string;
-  addedAt: string;
+  id: string
+	title: string
+	videoURL: string
+	thumbnailURL: string
+	createdAt: string
 }
 
 // ── Mock profile data ─────────────────────────────────────────────────────────
@@ -57,12 +60,12 @@ const STAT_ROWS = [
 
 // ── Mock memes data ────────────────────────────────────────────────────────────
 
-const INITIAL_MEMES: MemeItem[] = [
-  { id: '1', emoji: '😭', caption: 'me at 3am before the CS2040 quiz', addedBy: 'Jake', addedAt: '2d ago' },
-  { id: '2', emoji: '🫠', caption: 'when the compiler says segfault', addedBy: 'You', addedAt: '4d ago' },
-  { id: '3', emoji: '📉', caption: 'my focus score after lunch', addedBy: 'Lily', addedAt: '5d ago' },
-  { id: '4', emoji: '🐢', caption: 'my typing speed during finals', addedBy: 'Mia', addedAt: '1w ago' },
-];
+// const INITIAL_MEMES: MemeItem[] = [
+//   { id: '1', emoji: '😭', caption: 'me at 3am before the CS2040 quiz', addedBy: 'Jake', addedAt: '2d ago' },
+//   { id: '2', emoji: '🫠', caption: 'when the compiler says segfault', addedBy: 'You', addedAt: '4d ago' },
+//   { id: '3', emoji: '📉', caption: 'my focus score after lunch', addedBy: 'Lily', addedAt: '5d ago' },
+//   { id: '4', emoji: '🐢', caption: 'my typing speed during finals', addedBy: 'Mia', addedAt: '1w ago' },
+// ];
 
 const EMOJI_OPTIONS = ['😂', '😭', '🫠', '💀', '📉', '🥲', '😮‍💨', '🤡'];
 
@@ -172,7 +175,6 @@ function getGrowthData(interval: Interval, anchor: Date) {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
-
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -180,7 +182,8 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Interval>('daily');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const [memes, setMemes] = useState<MemeItem[]>(INITIAL_MEMES);
+  const [memes, setMemes] = useState<MemeItem[]>();
+  const [selectedMeme, setSelectedMeme] = useState<MemeItem>()
   const [addMemeOpen, setAddMemeOpen] = useState(false);
   const [memeCaption, setMemeCaption] = useState('');
   const [memeEmoji, setMemeEmoji] = useState(EMOJI_OPTIONS[0]);
@@ -212,6 +215,11 @@ export default function DashboardPage() {
     return undefined;
   }
 
+  async function initDashboard() {
+    const data = await getMyDashboard(user?.userId)
+    setMemes(data.memes)
+  }
+
   function closeAddMeme() {
     setAddMemeOpen(false);
     setMemeCaption('');
@@ -226,17 +234,17 @@ export default function DashboardPage() {
     setMemeImagePreview(url);
   }
 
-  function handleAddMeme() {
-    const newMeme: MemeItem = {
-      id: Date.now().toString(),
-      caption: memeCaption.trim() || 'Untitled meme',
-      addedBy: 'You',
-      addedAt: 'Just now',
-      ...(memeImagePreview ? { imageUrl: memeImagePreview } : { emoji: memeEmoji }),
-    };
-    setMemes((prev) => [newMeme, ...prev]);
-    closeAddMeme();
-  }
+  // function handleAddMeme() {
+  //   const newMeme: MemeDTO = {
+  //     id: Date.now().toString(),
+  //     title: memeCaption.trim() || 'Untitled meme',
+  //     uploaderID: 'You',
+  //     createdAt: 'Just now',
+  //     ...(memeImagePreview ? { imageUrl: memeImagePreview } : { emoji: memeEmoji }),
+  //   };
+  //   setMemes((prev) => [newMeme, ...prev]);
+  //   closeAddMeme();
+  // }
 
   return (
     <div className={styles.page}>
@@ -258,7 +266,7 @@ export default function DashboardPage() {
       <div className={styles.layout}>
         {/* ── Left sidebar: profile ───────────────────────────────────────── */}
         <aside className={styles.sidebar}>
-          <div className={styles.avatarRing}>
+          <div onClick={initDashboard} className={styles.avatarRing}>
             <span className={styles.avatarEmoji}>{MOCK_PROFILE.avatarEmoji}</span>
           </div>
           <div className={styles.username}>{user?.username ?? MOCK_PROFILE.username}</div>
@@ -383,17 +391,16 @@ export default function DashboardPage() {
                 <span className={styles.addMemePlus}>+</span>
                 Add a meme
               </button>
-              {memes.map((m) => (
-                <div key={m.id} className={styles.memeCard}>
+              {memes?.map((m) => (
+                <div onClick={() => setSelectedMeme(m)} key={m.id} className={styles.memeCard}>
                   <div className={styles.memeVisual}>
-                    {m.imageUrl ? (
-                      <img src={m.imageUrl} alt={m.caption} className={styles.memeImg} />
+                    {m.thumbnailURL ? (
+                      <img src={m.thumbnailURL} alt={m.title} className={styles.memeImg} />
                     ) : (
-                      <span className={styles.memeEmojiBig}>{m.emoji}</span>
+                      <span className={styles.memeEmojiBig}>{m.title}</span>
                     )}
                   </div>
-                  <div className={styles.memeCaption}>{m.caption}</div>
-                  <div className={styles.memeMeta}>Added by {m.addedBy} · {m.addedAt}</div>
+                  <div className={styles.memeCaption}>{m.title}</div>
                 </div>
               ))}
             </div>
@@ -455,10 +462,23 @@ export default function DashboardPage() {
               />
             </div>
 
-            <button onClick={handleAddMeme} className={btn.submit}>✨ Add to collection</button>
+            {/* <button onClick={handleAddMeme} className={btn.submit}>✨ Add to collection</button> */}
           </div>
         </div>
       )}
+
+      {selectedMeme && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalCard}>
+              <div className={styles.modalHeader}>
+                <span className={styles.modalHeaderTitle}>{selectedMeme.title}</span>
+                <button className={styles.modalCloseBtn} onClick={() => setSelectedMeme(undefined)}>✕</button>
+              </div>
+              <video src={selectedMeme.videoURL} autoPlay />
+            </div>
+        </div>
+        )
+      }
     </div>
   );
 }

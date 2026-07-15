@@ -14,7 +14,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/dashboard/me", h.Me)
+	mux.HandleFunc("QUERY /api/dashboard/me", h.Me)
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {

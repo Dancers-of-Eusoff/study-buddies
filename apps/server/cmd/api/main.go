@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
@@ -33,7 +34,7 @@ func corsMiddleware(next http.Handler) http.Handler {
         if allowedOrigins[origin] {
             w.Header().Set("Access-Control-Allow-Origin", origin)
         }
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, QUERY")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
@@ -96,20 +97,25 @@ func main() {
 	userHandler := users.NewHandler(userService)
 	userHandler.RegisterRoutes(mux)
 
-	// dashboardRepo := dashboards.NewDashboardRepo(db)
-	// dashboardService := dashboards.NewService(dashboardRepo)
+	dashboardRepo := dashboards.NewDashboardRepo(db)
+	dashboardService := dashboards.NewService(dashboardRepo)
+	dashboardHandler := dashboards.NewHandler(dashboardService)
+	dashboardHandler.RegisterRoutes(mux)
 
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
 		if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.WriteHeader(http.StatusNoContent)
-		return
+			origin := r.Header.Get("Origin")
+			if allowedOrigins[origin] {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.WriteHeader(http.StatusNoContent)
+			return
 		}
 		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
 		log.Printf("📨 Event [%s] roomId [%s] from user [%s]", event.Type, event.RoomID, client.UserID)
