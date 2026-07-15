@@ -5,10 +5,10 @@ type Service struct {
 }
 
 func NewService(repo Repository) *Service {
-	return &Service{ repo: repo }
+	return &Service{repo: repo}
 }
 
-func (s *Service) GetMemes(userId string) (*[]MemesDTO, error) {
+func (s *Service) GetMemes(userId string) (*[]MemeDTO, error) {
 	memes, err := s.repo.GetMemesByUser(userId)
 	return memes, err
 }

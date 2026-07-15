@@ -11,10 +11,10 @@ export interface Meme {
 }
 
 export interface MemeDTO {
-    id: string
+    id?: string
 	title: string
 	videoURL: string
 	thumbnailURL: string
 	uploaderID: string
-	createdAt: string
+	createdAt?: string
 }

@@ -1,4 +1,4 @@
-import type { DashboardResponse } from "../types/dashboard";
+import type { DashboardResponse, Meme, MemeDTO } from "../types/dashboard";
 
 const BASE = `${import.meta.env.VITE_BASE_URL}/api/dashboard`
 
@@ -14,4 +14,12 @@ export async function getMyDashboard(userId: string | undefined): Promise<Dashbo
     const memes = await res.json()
     console.log("Dashboard memes:", memes)
     return { memes: memes } as unknown as DashboardResponse
+}
+
+export async function addMemeToCloud(meme: MemeDTO) {
+
+}
+
+export async function addMemeToPG(meme: MemeDTO) {
+    
 }

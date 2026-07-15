@@ -13,6 +13,7 @@ import {
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
 import { getMyDashboard } from '../api/dashboardApi';
+// import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
 
@@ -182,7 +183,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Interval>('daily');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const [memes, setMemes] = useState<MemeItem[]>();
+  const [memes, setMemes] = useState<MemeItem[]>([]);
   const [selectedMeme, setSelectedMeme] = useState<MemeItem>()
   const [addMemeOpen, setAddMemeOpen] = useState(false);
   const [memeCaption, setMemeCaption] = useState('');
@@ -220,6 +221,9 @@ export default function DashboardPage() {
     setMemes(data.memes)
   }
 
+  const [memeObjectUrl, setMemeObjectUrl] = useState<string>();
+  const [uploadedMeme, setUploadedMeme] = useState<File | undefined>();
+
   function closeAddMeme() {
     setAddMemeOpen(false);
     setMemeCaption('');
@@ -229,22 +233,61 @@ export default function DashboardPage() {
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) return ;
+    setUploadedMeme(file);
     const url = URL.createObjectURL(file);
+    setMemeObjectUrl(url);
     setMemeImagePreview(url);
   }
 
-  // function handleAddMeme() {
-  //   const newMeme: MemeDTO = {
-  //     id: Date.now().toString(),
-  //     title: memeCaption.trim() || 'Untitled meme',
-  //     uploaderID: 'You',
-  //     createdAt: 'Just now',
-  //     ...(memeImagePreview ? { imageUrl: memeImagePreview } : { emoji: memeEmoji }),
-  //   };
-  //   setMemes((prev) => [newMeme, ...prev]);
-  //   closeAddMeme();
-  // }
+  function getVideoThumbnail(videoUrl: string): string {
+    if (!videoUrl) return "";
+
+    return videoUrl
+      .replace("/video/upload/", "/video/upload/so_5/")
+      .replace(/\.[^./]+$/, ".jpg");
+  }
+
+async function handleAddMeme() {
+    if (!uploadedMeme) return ;
+    if (!memeObjectUrl) return ;
+    if (!user) return ;
+
+    const formData = new FormData()
+    formData.append("file", uploadedMeme)
+    formData.append("upload_preset", "study_buddies")
+    const addMemeToCloud = async () => {
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/jlixjhrm/upload",
+        {
+          method: "post",
+          body: formData
+        }
+      );
+      const meme = await response.json();
+      return meme.url;
+    };
+    const videoURL = await addMemeToCloud();
+    const thumbnailURL = getVideoThumbnail(videoURL);
+    // const newMeme: MemeDTO = {
+    //   id: 
+    //   title: memeCaption,
+    //   videoURL: videoURL,
+    //   thumbnailURL: thumbnailURL,
+    //   uploaderID: user?.userId
+    // };
+    const newMeme: MemeItem = {
+      id: "test", 
+      title: memeCaption,
+      videoURL: videoURL,
+      thumbnailURL: thumbnailURL,
+      createdAt: "today"
+    };
+
+    setMemes([...memes, newMeme]);
+    URL.revokeObjectURL(memeObjectUrl);
+    closeAddMeme();
+  }
 
   return (
     <div className={styles.page}>
@@ -422,11 +465,11 @@ export default function DashboardPage() {
               <label className={styles.fieldLabel}>🖼️ Upload image</label>
               <label className={styles.fileInputBtn}>
                 📁 Choose a file...
-                <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+                <input type="file" accept="video/*" onChange={handleImageChange} hidden />
               </label>
               {memeImagePreview && (
                 <div className={styles.imagePreviewWrap}>
-                  <img src={memeImagePreview} alt="preview" className={styles.imagePreview} />
+                  <video src={memeImagePreview} className={styles.imagePreview} controls preload="metadata" />
                   <button onClick={() => setMemeImagePreview(null)} className={btn.ghost}>Remove</button>
                 </div>
               )}
@@ -452,17 +495,17 @@ export default function DashboardPage() {
             )}
 
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>📝 Caption</label>
+              <label className={styles.fieldLabel}>📝 Title</label>
               <textarea
                 className={styles.textarea}
-                placeholder="What's happening here..."
+                placeholder="What would you name your meme..."
                 value={memeCaption}
                 onChange={(e) => setMemeCaption(e.target.value)}
                 maxLength={120}
               />
             </div>
 
-            {/* <button onClick={handleAddMeme} className={btn.submit}>✨ Add to collection</button> */}
+            <button onClick={handleAddMeme} className={btn.submit}>✨ Add to collection</button>
           </div>
         </div>
       )}

@@ -617,10 +617,12 @@
 }
 
 .imagePreview {
-  width: 64px;
-  height: 64px;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 64px;
+  max-height: 64px;
   border-radius: var(--radius-md);
-  object-fit: cover;
   border: 1.5px solid var(--tan-deep);
 }
 
