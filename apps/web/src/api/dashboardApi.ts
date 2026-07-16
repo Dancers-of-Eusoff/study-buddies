@@ -10,16 +10,33 @@ export async function getMyDashboard(userId: string | undefined): Promise<Dashbo
     })
     if (!res.ok)
         throw new Error('Failed to fetch memes')
-    console.log("Dashboard response:", res)
     const memes = await res.json()
-    console.log("Dashboard memes:", memes)
     return { memes: memes } as unknown as DashboardResponse
 }
 
-export async function addMemeToCloud(meme: MemeDTO) {
-
+export async function addMemeToCloud(uploadedMeme: File) {
+    const formData = new FormData()
+    formData.append("file", uploadedMeme)
+    formData.append("upload_preset", "study_buddies")
+    const response = await fetch(
+        "https://api.cloudinary.com/v1_1/jlixjhrm/upload",
+        {
+          method: "post",
+          body: formData
+        }
+      );
+    const meme = await response.json();
+    return meme.url;
 }
 
-export async function addMemeToPG(meme: MemeDTO) {
-    
+export async function addMemeToPG(meme: MemeDTO): Promise<Meme> {
+    const res = await fetch(`${BASE}/submit-meme`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(meme)
+    })
+    if (!res.ok)
+        throw new Error('Failed to add new meme')
+    const createdMeme = res.json()
+    return createdMeme
 }

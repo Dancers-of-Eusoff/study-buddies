@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE session_summaries (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
     user_id UUID NOT NULL REFERENCES users(id),
     room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
     focus_duration_seconds INTEGER NOT NULL DEFAULT 0,

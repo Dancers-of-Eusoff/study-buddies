@@ -12,27 +12,11 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-import { getMyDashboard } from '../api/dashboardApi';
+import { addMemeToCloud, addMemeToPG, getMyDashboard } from '../api/dashboardApi';
+import type { Meme, MemeDTO } from '../types/dashboard';
 // import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
-
-// interface MemeItem {
-//   id: string;
-//   caption: string;
-//   emoji?: string;
-//   imageUrl?: string;
-//   addedBy: string;
-//   addedAt: string;
-// }
-
-interface MemeItem {
-  id: string
-	title: string
-	videoURL: string
-	thumbnailURL: string
-	createdAt: string
-}
 
 // ── Mock profile data ─────────────────────────────────────────────────────────
 
@@ -175,6 +159,14 @@ function getGrowthData(interval: Interval, anchor: Date) {
   return points;
 }
 
+function getVideoThumbnail(videoUrl: string): string {
+  if (!videoUrl) return "";
+
+  return videoUrl
+    .replace("/video/upload/", "/video/upload/so_5/")
+    .replace(/\.[^./]+$/, ".jpg");
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -183,14 +175,19 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Interval>('daily');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const [memes, setMemes] = useState<MemeItem[]>([]);
-  const [selectedMeme, setSelectedMeme] = useState<MemeItem>()
+  const [memes, setMemes] = useState<Meme[]>([]);
+  const [selectedMeme, setSelectedMeme] = useState<Meme>()
   const [addMemeOpen, setAddMemeOpen] = useState(false);
   const [memeCaption, setMemeCaption] = useState('');
   const [memeEmoji, setMemeEmoji] = useState(EMOJI_OPTIONS[0]);
   const [memeImagePreview, setMemeImagePreview] = useState<string | null>(null);
+  // Upload meme
+  const [memeObjectUrl, setMemeObjectUrl] = useState<string>();
+  const [uploadedMeme, setUploadedMeme] = useState<File | undefined>();
+  const [isAddingMeme, setIsAddingMeme] = useState<boolean>(false);
 
   const rangeLabel = useMemo(() => getRangeLabel(activeTab, selectedDate), [activeTab, selectedDate]);
+
 
   const seedKey = useMemo(() => {
     if (activeTab === 'daily') return selectedDate.toDateString();
@@ -221,9 +218,6 @@ export default function DashboardPage() {
     setMemes(data.memes)
   }
 
-  const [memeObjectUrl, setMemeObjectUrl] = useState<string>();
-  const [uploadedMeme, setUploadedMeme] = useState<File | undefined>();
-
   function closeAddMeme() {
     setAddMemeOpen(false);
     setMemeCaption('');
@@ -240,52 +234,25 @@ export default function DashboardPage() {
     setMemeImagePreview(url);
   }
 
-  function getVideoThumbnail(videoUrl: string): string {
-    if (!videoUrl) return "";
-
-    return videoUrl
-      .replace("/video/upload/", "/video/upload/so_5/")
-      .replace(/\.[^./]+$/, ".jpg");
-  }
-
-async function handleAddMeme() {
+  async function handleAddMeme() {
     if (!uploadedMeme) return ;
     if (!memeObjectUrl) return ;
     if (!user) return ;
 
-    const formData = new FormData()
-    formData.append("file", uploadedMeme)
-    formData.append("upload_preset", "study_buddies")
-    const addMemeToCloud = async () => {
-      const response = await fetch(
-        "https://api.cloudinary.com/v1_1/jlixjhrm/upload",
-        {
-          method: "post",
-          body: formData
-        }
-      );
-      const meme = await response.json();
-      return meme.url;
-    };
-    const videoURL = await addMemeToCloud();
+    setIsAddingMeme(true)     // start loading
+    const videoURL = await addMemeToCloud(uploadedMeme);
     const thumbnailURL = getVideoThumbnail(videoURL);
-    // const newMeme: MemeDTO = {
-    //   id: 
-    //   title: memeCaption,
-    //   videoURL: videoURL,
-    //   thumbnailURL: thumbnailURL,
-    //   uploaderID: user?.userId
-    // };
-    const newMeme: MemeItem = {
-      id: "test", 
+    const submitedMeme: MemeDTO = {
       title: memeCaption,
       videoURL: videoURL,
       thumbnailURL: thumbnailURL,
-      createdAt: "today"
+      uploaderID: user.userId
     };
+    const newMeme = await addMemeToPG(submitedMeme);
 
     setMemes([...memes, newMeme]);
     URL.revokeObjectURL(memeObjectUrl);
+    setIsAddingMeme(false)    // finish loading
     closeAddMeme();
   }
 
@@ -505,7 +472,10 @@ async function handleAddMeme() {
               />
             </div>
 
-            <button onClick={handleAddMeme} className={btn.submit}>✨ Add to collection</button>
+            {isAddingMeme
+              ? (<button onClick={handleAddMeme} className={btn.submit} disabled>✨ Adding meme</button>)
+              : (<button onClick={handleAddMeme} className={btn.submit}>✨ Add to collection</button>)
+            }
           </div>
         </div>
       )}

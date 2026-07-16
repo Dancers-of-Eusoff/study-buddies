@@ -4,6 +4,7 @@ import "database/sql"
 
 type Repository interface {
 	GetMemesByUser(userId string) (*[]MemeDTO, error)
+	AddMeme(meme *SubmittedMemeDTO) (*MemeDTO, error)
 }
 
 type DashboardRepo struct {
@@ -39,6 +40,22 @@ func (r *DashboardRepo) GetMemesByUser(userId string) (*[]MemeDTO, error) {
 	return &memes, nil
 }
 
-func (r *DashboardRepo) AddMeme(meme UserMemeDTO) {
+func (r *DashboardRepo) AddMeme(meme *SubmittedMemeDTO) (*MemeDTO, error) {
+	var createdMeme MemeDTO
+	query := `INSERT INTO memes (title, uploader_id, video_url, thumbnail_url)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, title, video_url, thumbnail_url, created_at`
 
+	err := r.db.QueryRow(query, meme.Title, meme.UploaderID, meme.VideoURL, meme.ThumbnailURL).Scan(
+		&createdMeme.ID,
+		&createdMeme.Title,
+		&createdMeme.VideoURL,
+		&createdMeme.ThumbnailURL,
+		&createdMeme.CreatedAt,
+	)
+	if err != nil {
+		return &MemeDTO{}, err
+	}
+
+	return &createdMeme, nil
 }

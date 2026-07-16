@@ -442,7 +442,7 @@
   font-size: 0.86rem;
   font-weight: 700;
   color: var(--ink);
-  padding: 10px 10px 2px;
+  padding: 10px 10px 6px;
   line-height: 1.3;
 }
 
@@ -458,7 +458,7 @@
   border: 2px dashed var(--tan-deep);
   border-radius: var(--radius-md);
   background: transparent;
-  min-height: 190px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;

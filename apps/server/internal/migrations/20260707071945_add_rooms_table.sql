@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE rooms (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
     title VARCHAR NOT NULL,
     description TEXT,
     host_id UUID NOT NULL REFERENCES users(id),

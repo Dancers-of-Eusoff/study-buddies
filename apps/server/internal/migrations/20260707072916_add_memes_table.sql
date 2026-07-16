@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE memes (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
     uploader_id UUID REFERENCES users(id),
     title VARCHAR NOT NULL,
     video_url VARCHAR NOT NULL,
