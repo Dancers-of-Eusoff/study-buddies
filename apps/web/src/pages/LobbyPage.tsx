@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode, InputHTMLAttributes } from 'react';
-import { useNavigate } from 'react-router';
+import { NavLink, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { listPublicRooms, createRoom, joinRoom } from '../api/roomsApi';
 import type { Room, CreateRoomRequest } from '../types';
@@ -112,10 +112,10 @@ export default function LobbyPage() {
           <span className={styles.logoText}>Study Buddies</span>
         </div>
         <div className={styles.navActions}>
-          <div className={styles.userChip}>
-            <span>🐼</span>
-            <span className={styles.userChipName}>{user?.username}</span>
-          </div>
+            <NavLink to="/dashboard" className={styles.userChip}>
+                <span>🐼</span>
+                <span className={styles.userChipName}>{user?.username}</span>
+            </NavLink>
           <button onClick={logout} className={btn.ghost}>Log out</button>
         </div>
       </nav>
@@ -146,7 +146,7 @@ export default function LobbyPage() {
           ))}
           <button onClick={loadRooms} title="Refresh" className={styles.refreshBtn}>
             <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="var(--bark)">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M4.681 3H2V2h3.5l.5.5V6H5V4a5 5 0 1 0 4.53-.761l.302-.954A6 6 0 1 1 4.681 3z"/>
+              <path fillRule="evenodd" clipRule="evenodd" d="M4.681 3H2V2h3.5l.5.5V6H5V4a5 5 0 1 0 4.53-.761l.302-.954A6 6 0 1 1 4.681 3z"/>
             </svg>
           </button>
         </div>

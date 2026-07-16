@@ -17,7 +17,6 @@ export function RoomProvider({ children } : { children : ReactNode }) {
         const getData = async () => {
             const data = await getRoomDetails(token, roomId);
             setRoomDetails(data);
-            // setIsLoading(false);
         }
         
         getData();

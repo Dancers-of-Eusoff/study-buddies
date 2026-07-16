@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage';
 import LobbyPage from './pages/LobbyPage';
 import StudyRoomPage from './pages/StudyRoomPage';
 import SexierStudyRoomPage from './pages/SexierStudyRoomPage';
+import DashboardPage from './pages/DashboardPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -33,7 +34,7 @@ function AppRoutes() {
       <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
       <Route path="/rooms/:roomId" element={<RequireAuth><StudyRoomPage /></RequireAuth>} />
       <Route path="/sexier-rooms/:roomId" element={<RequireAuth><SexierStudyRoomPage /></RequireAuth>} />
-      <Route path="/dashboard/:userId" />
+      <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>}/>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
