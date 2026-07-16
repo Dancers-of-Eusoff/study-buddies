@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,6 @@ import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
 import { addMemeToCloud, addMemeToPG, getMyDashboard } from '../api/dashboardApi';
 import type { Meme, MemeDTO } from '../types/dashboard';
-// import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
 
@@ -42,17 +41,6 @@ const STAT_ROWS = [
   { icon: '👥', label: 'Friends', value: `${MOCK_PROFILE.friendsCount}` },
   { icon: '🗓️', label: 'Joined', value: MOCK_PROFILE.joinDate },
 ];
-
-// ── Mock memes data ────────────────────────────────────────────────────────────
-
-// const INITIAL_MEMES: MemeItem[] = [
-//   { id: '1', emoji: '😭', caption: 'me at 3am before the CS2040 quiz', addedBy: 'Jake', addedAt: '2d ago' },
-//   { id: '2', emoji: '🫠', caption: 'when the compiler says segfault', addedBy: 'You', addedAt: '4d ago' },
-//   { id: '3', emoji: '📉', caption: 'my focus score after lunch', addedBy: 'Lily', addedAt: '5d ago' },
-//   { id: '4', emoji: '🐢', caption: 'my typing speed during finals', addedBy: 'Mia', addedAt: '1w ago' },
-// ];
-
-const EMOJI_OPTIONS = ['😂', '😭', '🫠', '💀', '📉', '🥲', '😮‍💨', '🤡'];
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -179,7 +167,6 @@ export default function DashboardPage() {
   const [selectedMeme, setSelectedMeme] = useState<Meme>()
   const [addMemeOpen, setAddMemeOpen] = useState(false);
   const [memeCaption, setMemeCaption] = useState('');
-  const [memeEmoji, setMemeEmoji] = useState(EMOJI_OPTIONS[0]);
   const [memeImagePreview, setMemeImagePreview] = useState<string | null>(null);
   // Upload meme
   const [memeObjectUrl, setMemeObjectUrl] = useState<string>();
@@ -187,7 +174,6 @@ export default function DashboardPage() {
   const [isAddingMeme, setIsAddingMeme] = useState<boolean>(false);
 
   const rangeLabel = useMemo(() => getRangeLabel(activeTab, selectedDate), [activeTab, selectedDate]);
-
 
   const seedKey = useMemo(() => {
     if (activeTab === 'daily') return selectedDate.toDateString();
@@ -213,15 +199,9 @@ export default function DashboardPage() {
     return undefined;
   }
 
-  async function initDashboard() {
-    const data = await getMyDashboard(user?.userId)
-    setMemes(data.memes)
-  }
-
   function closeAddMeme() {
     setAddMemeOpen(false);
     setMemeCaption('');
-    setMemeEmoji(EMOJI_OPTIONS[0]);
     setMemeImagePreview(null);
   }
 
@@ -256,6 +236,15 @@ export default function DashboardPage() {
     closeAddMeme();
   }
 
+  useEffect(() => {
+    const initDashboard = async () => {
+      const data = await getMyDashboard(user?.userId)
+      setMemes(data.memes)
+    }
+
+    initDashboard();
+  }, [])
+
   return (
     <div className={styles.page}>
       <div className={styles.blobSky} />
@@ -276,7 +265,7 @@ export default function DashboardPage() {
       <div className={styles.layout}>
         {/* ── Left sidebar: profile ───────────────────────────────────────── */}
         <aside className={styles.sidebar}>
-          <div onClick={initDashboard} className={styles.avatarRing}>
+          <div className={styles.avatarRing}>
             <span className={styles.avatarEmoji}>{MOCK_PROFILE.avatarEmoji}</span>
           </div>
           <div className={styles.username}>{user?.username ?? MOCK_PROFILE.username}</div>
@@ -441,25 +430,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-
-            {!memeImagePreview && (
-              <>
-                <div className={styles.orDivider}>— or pick an emoji instead —</div>
-                <div className={styles.field}>
-                  <div className={styles.emojiPickRow}>
-                    {EMOJI_OPTIONS.map((e) => (
-                      <button
-                        key={e}
-                        onClick={() => setMemeEmoji(e)}
-                        className={memeEmoji === e ? styles.emojiOptionActive : styles.emojiOption}
-                      >
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
 
             <div className={styles.field}>
               <label className={styles.fieldLabel}>📝 Title</label>
