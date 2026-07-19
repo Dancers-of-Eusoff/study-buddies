@@ -9,7 +9,6 @@ import (
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
-	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
@@ -63,6 +62,7 @@ func main() {
     }
 
     connStr := os.Getenv("DATABASE_URL")
+	log.Println(connStr)
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)

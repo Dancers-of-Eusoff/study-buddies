@@ -40,9 +40,10 @@ func (r *UserRepo) CreateUser(p *CreateUserParams) (string, error) {
 
 func (r *UserRepo) FindByUsername(username string) (*User, error) {
 	var u User
-	query := `SELECT id, username, password FROM users WHERE username = $1`
+	query := `SELECT id, username, password FROM users
+			WHERE username = $1`
 
-	err := r.db.QueryRow(query, username).Scan(&u.ID, &u.Username)
+	err := r.db.QueryRow(query, username).Scan(&u.ID, &u.Username, &u.PasswordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return &User{}, fmt.Errorf("user not found: %w", err)

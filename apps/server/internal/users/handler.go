@@ -32,14 +32,25 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, err := h.service.Register(req)
+	user, accessToken, err := h.service.Register(req)
 	if err != nil {
 		h.writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: accessToken,
+		MaxAge: 15 * 60,
+		HttpOnly: true,
+		Secure: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &accessCookie)
+
 	h.writeJSON(w, http.StatusCreated, AuthResponse{
-		Token:    token,
+		// Token:    token,
 		Username: user.Username,
 		UserID:   user.ID,
 	})
@@ -57,14 +68,26 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, err := h.service.Login(req)
+	user, accessToken, err := h.service.Login(req)
 	if err != nil {
 		h.writeError(w, http.StatusUnauthorized, err)
 		return
 	}
 
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: accessToken,
+		MaxAge: 15 * 60,
+		HttpOnly: true,
+		Secure: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &accessCookie)
+	// http.SetCookie(w, &refreshCookie)
+
 	h.writeJSON(w, http.StatusOK, AuthResponse{
-		Token:    token,
+		// Token:    accessToken,
 		Username: user.Username,
 		UserID:   user.ID,
 	})
