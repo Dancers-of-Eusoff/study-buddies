@@ -40,6 +40,7 @@ export async function loginUser(username: string, password: string): Promise<Aut
   const res = await fetch(`${BASE}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ username, password }),
   });
   const body = await safeJson(res);

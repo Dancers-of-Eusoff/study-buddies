@@ -3,9 +3,12 @@ package users
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 )
+
+var isProd bool = os.Getenv("ENV") == "production"
 
 type Handler struct {
 	base *internal.Handler
@@ -46,7 +49,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Value: accessToken,
 		MaxAge: 15 * 60,
 		HttpOnly: true,
-		Secure: true,
+		Secure: isProd,
 		SameSite: http.SameSiteLaxMode,
 	}
 
@@ -82,7 +85,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Value: accessToken,
 		MaxAge: 15 * 60,
 		HttpOnly: true,
-		Secure: true,
+		Secure: isProd,
 		Path: "/",
 		SameSite: http.SameSiteLaxMode,
 	}
@@ -103,7 +106,7 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		Value: "",
 		MaxAge: -1,
 		HttpOnly: true,
-		Secure: true,
+		Secure: isProd,
 		Path: "/",
 		SameSite: http.SameSiteLaxMode,
 	}

@@ -20,23 +20,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) { setIsLoading(false); return; }
-    fetchMe(stored)
-      .then((u) => { setToken(stored); setUser(u); })
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
-      .finally(() => setIsLoading(false));
+    // const stored = localStorage.getItem(TOKEN_KEY);
+    // if (!stored) { setIsLoading(false); return; }
+    // fetchMe(stored)
+    //   .then((u) => { setToken(stored); setUser(u); })
+    //   .catch(() => localStorage.removeItem(TOKEN_KEY))
+    //   .finally(() => setIsLoading(false));
+    setUser({userId: "bcrypt", username: "bcrypt"})
+    setIsLoading(false)
   }, []);
 
   function login(newToken: string, newUser: User) {
-    localStorage.setItem(TOKEN_KEY, newToken);
-    setToken(newToken);
+    // localStorage.setItem(TOKEN_KEY, newToken);
+    // setToken(newToken);
     setUser(newUser);
   }
 
   function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
+    // localStorage.removeItem(TOKEN_KEY);
+    // setToken(null);
     setUser(null);
   }
 
