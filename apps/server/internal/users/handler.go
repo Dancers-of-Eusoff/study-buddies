@@ -3,38 +3,41 @@ package users
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 )
 
 type Handler struct {
+	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(base *internal.Handler, service *Service) *Handler {
+	return &Handler{base: base, service: service}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/auth/register", h.handleRegister)
-	mux.HandleFunc("/api/auth/login", h.handleLogin)
-	mux.HandleFunc("/api/auth/me", h.handleMe)
+	mux.HandleFunc("/api/auth/register", h.base.RequireAuth(h.handleRegister))
+	mux.HandleFunc("/api/auth/login", h.base.RequireAuth(h.handleLogin))
+	mux.HandleFunc("POST /api/auth/logout", h.base.RequireAuth(h.handleLogout))
+	// mux.HandleFunc("/api/auth/me", h.handleMe)
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+		h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 		return
 	}
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, ErrInvalidJSON)
+		h.base.WriteError(w, http.StatusBadRequest, ErrInvalidJSON)
 		return
 	}
 
 	user, accessToken, err := h.service.Register(req)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, err)
+		h.base.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -49,7 +52,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &accessCookie)
 
-	h.writeJSON(w, http.StatusCreated, AuthResponse{
+	h.base.WriteJSON(w, http.StatusCreated, AuthResponse{
 		// Token:    token,
 		Username: user.Username,
 		UserID:   user.ID,
@@ -58,19 +61,19 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+		h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 		return
 	}
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, ErrInvalidJSON)
+		h.base.WriteError(w, http.StatusBadRequest, ErrInvalidJSON)
 		return
 	}
 
 	user, accessToken, err := h.service.Login(req)
 	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, err)
+		h.base.WriteError(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -80,50 +83,55 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		MaxAge: 15 * 60,
 		HttpOnly: true,
 		Secure: true,
+		Path: "/",
 		SameSite: http.SameSiteLaxMode,
 	}
 
 	http.SetCookie(w, &accessCookie)
 	// http.SetCookie(w, &refreshCookie)
 
-	h.writeJSON(w, http.StatusOK, AuthResponse{
+	h.base.WriteJSON(w, http.StatusOK, AuthResponse{
 		// Token:    accessToken,
 		Username: user.Username,
 		UserID:   user.ID,
 	})
 }
 
-func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
+func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: "",
+		MaxAge: -1,
+		HttpOnly: true,
+		Secure: true,
+		Path: "/",
+		SameSite: http.SameSiteLaxMode,
 	}
 
-	authHeader := r.Header.Get("Authorization")
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		h.writeError(w, http.StatusUnauthorized, ErrMissingHeader)
-		return
-	}
-
-	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-	claims, err := h.service.ValidateToken(tokenStr)
-	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, ErrInvalidToken)
-		return
-	}
-
-	h.writeJSON(w, http.StatusOK, map[string]string{
-		"userId":   claims.UserID,
-		"username": claims.Username,
-	})
+	http.SetCookie(w, &accessCookie)
 }
 
-func (h *Handler) writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
+// func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodGet {
+// 		h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+// 		return
+// 	}
 
-func (h *Handler) writeError(w http.ResponseWriter, status int, err error) {
-	h.writeJSON(w, status, ErrorResponse{Error: err.Error()})
-}
+// 	authHeader := r.Header.Get("Authorization")
+// 	if !strings.HasPrefix(authHeader, "Bearer ") {
+// 		h.base.WriteError(w, http.StatusUnauthorized, ErrMissingHeader)
+// 		return
+// 	}
+
+// 	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+// 	claims, err := h.service.ValidateToken(tokenStr)
+// 	if err != nil {
+// 		h.base.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+// 		return
+// 	}
+
+// 	h.base.WriteJSON(w, http.StatusOK, map[string]string{
+// 		"userId":   claims.UserID,
+// 		"username": claims.Username,
+// 	})
+// }

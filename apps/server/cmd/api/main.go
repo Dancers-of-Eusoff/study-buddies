@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
@@ -62,7 +63,6 @@ func main() {
     }
 
     connStr := os.Getenv("DATABASE_URL")
-	log.Println(connStr)
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -79,6 +79,7 @@ func main() {
 	chatService := chat.NewService(chatRepo, wsHub)
 
 	// --- Existing Feature Packages ---
+	base := internal.NewHandler([]byte(os.Getenv("JWT_SECRET")))
 	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
@@ -94,7 +95,7 @@ func main() {
 	// Connected to DB
 	userRepo := users.NewUserRepo(db)
 	userService := users.NewService(userRepo)
-	userHandler := users.NewHandler(userService)
+	userHandler := users.NewHandler(base, userService)
 	userHandler.RegisterRoutes(mux)
 
 	dashboardRepo := dashboards.NewDashboardRepo(db)

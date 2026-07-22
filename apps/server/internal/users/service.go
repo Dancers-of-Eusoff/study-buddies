@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
+	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/auth"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
@@ -124,24 +124,6 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 	default:
 		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
 	}
-}
-
-func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
-		return s.jwtSecret, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, ErrInvalidToken
-	}
-	return claims, nil
 }
 
 func (s *Service) GenerateAccessToken(user *UserDTO) (string, error) {
