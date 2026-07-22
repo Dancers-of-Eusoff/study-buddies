@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
+	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/auth"
 )
 
 type Handler struct {
@@ -17,18 +18,18 @@ func NewHandler(base *internal.Handler, service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("QUERY /api/dashboard/me", h.base.RequireAuth(h.Me))
+	mux.HandleFunc("GET /api/dashboard/me", h.base.RequireAuth(h.Me))
 	mux.HandleFunc("POST /api/dashboard/submit-meme", h.base.RequireAuth(h.AddMeme))
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	var req DashboardRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	user, ok := internal.UserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unable to get UserContext", http.StatusInternalServerError)
 		return
 	}
 
-	memes, err := h.service.GetMemes(req.UserID)
+	memes, err := h.service.GetMemes(user.UserID)
 	if err != nil {
 		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
 		return

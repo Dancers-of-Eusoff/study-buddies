@@ -9,6 +9,9 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/auth"
 )
 
+type contextKey string
+const userContextKey contextKey = "user"
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
@@ -34,8 +37,6 @@ func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		type contextKey string
-		var userContextKey contextKey = "user"
 		ctx := context.WithValue(r.Context(), userContextKey, claims)
 		next(w, r.WithContext(ctx))
 	}
@@ -49,6 +50,11 @@ func (h *Handler) WriteJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func (h *Handler) WriteError(w http.ResponseWriter, status int, err error) {
 	h.WriteJSON(w, status, ErrorResponse{Error: err.Error()})
+}
+
+func UserFromContext(ctx context.Context) (*auth.Claims, bool) {
+	claims, ok := ctx.Value(userContextKey).(*auth.Claims)
+	return claims, ok
 }
 
 var (

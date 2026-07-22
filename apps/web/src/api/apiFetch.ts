@@ -19,7 +19,7 @@ export default async function apiFetch(path: string, method: string, options: Re
         if (!refreshed.ok) {
             return res
         }
-        
+
         return fetch(`${BASE}${path}`, {
             ...options,
             credentials: 'include',

@@ -238,8 +238,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const initDashboard = async () => {
-      const data = await getMyDashboard(user?.userId)
-      setMemes(data.memes)
+      const data = await getMyDashboard();
+      setMemes(data.memes);
     }
 
     initDashboard();
