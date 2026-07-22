@@ -5,21 +5,24 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 )
 
 type Handler struct {
+	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(base *internal.Handler, service *Service) *Handler {
+	return &Handler{base: base, service: service}
 }
 
 // assign http to function
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/rooms-join", h.handleJoinRoom)
-	mux.HandleFunc("/api/rooms/", h.handleRoomByID)
-	mux.HandleFunc("/api/rooms", h.handleRooms)
+	mux.HandleFunc("/api/rooms-join", h.base.RequireAuth(h.handleJoinRoom))
+	mux.HandleFunc("/api/rooms/", h.base.RequireAuth(h.handleRoomByID))
+	mux.HandleFunc("/api/rooms", h.base.RequireAuth(h.handleRooms))
 }
 
 // basically, w for output, r for input

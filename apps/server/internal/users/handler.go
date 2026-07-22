@@ -17,8 +17,8 @@ func NewHandler(base *internal.Handler, service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/auth/register", h.base.RequireAuth(h.handleRegister))
-	mux.HandleFunc("/api/auth/login", h.base.RequireAuth(h.handleLogin))
+	mux.HandleFunc("/api/auth/register", h.handleRegister)
+	mux.HandleFunc("/api/auth/login", h.handleLogin)
 	mux.HandleFunc("POST /api/auth/logout", h.base.RequireAuth(h.handleLogout))
 	// mux.HandleFunc("/api/auth/me", h.handleMe)
 }

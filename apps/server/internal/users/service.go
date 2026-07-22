@@ -100,7 +100,6 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 
 func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 	user, err := s.repo.FindByUsername(req.Username)
-	fmt.Printf("User: %v", user)
 	switch {
 	case err == nil:
 		if !s.checkPassword(req.Password, user.PasswordHash){

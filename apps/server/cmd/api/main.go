@@ -83,7 +83,7 @@ func main() {
 	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
-	roomHandler := rooms.NewHandler(roomService)
+	roomHandler := rooms.NewHandler(base, roomService)
 	roomHandler.RegisterRoutes(mux)
 
 	// Not Connected to DB
@@ -100,7 +100,7 @@ func main() {
 
 	dashboardRepo := dashboards.NewDashboardRepo(db)
 	dashboardService := dashboards.NewService(dashboardRepo)
-	dashboardHandler := dashboards.NewHandler(dashboardService)
+	dashboardHandler := dashboards.NewHandler(base, dashboardService)
 	dashboardHandler.RegisterRoutes(mux)
 
 	// --- WebSocket endpoint ---

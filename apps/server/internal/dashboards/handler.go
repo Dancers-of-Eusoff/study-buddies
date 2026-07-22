@@ -3,19 +3,22 @@ package dashboards
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 )
 
 type Handler struct {
+	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(base *internal.Handler, service *Service) *Handler {
+	return &Handler{base: base, service: service}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("QUERY /api/dashboard/me", h.Me)
-	mux.HandleFunc("POST /api/dashboard/submit-meme", h.AddMeme)
+	mux.HandleFunc("QUERY /api/dashboard/me", h.base.RequireAuth(h.Me))
+	mux.HandleFunc("POST /api/dashboard/submit-meme", h.base.RequireAuth(h.AddMeme))
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
