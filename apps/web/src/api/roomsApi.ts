@@ -1,7 +1,7 @@
 import type { Room, RoomDetails, CreateRoomRequest, JoinRoomRequest } from '../types';
 import apiFetch from './apiFetch';
 
-const API_PATH: string = '/rooms';
+const PATH: string = '/rooms';
 const includeCred: RequestInit = { credentials: 'include' }
 
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
@@ -20,7 +20,7 @@ function friendlyError(raw: string, fallback: string): string {
 }
 
 export async function listPublicRooms(moduleCode?: string): Promise<Room[]> {
-  const url = moduleCode ? `${API_PATH}?module=${encodeURIComponent(moduleCode)}` : API_PATH;
+  const url = moduleCode ? `${PATH}?module=${encodeURIComponent(moduleCode)}` : PATH;
   const res = await apiFetch(url, 'GET', includeCred);
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to fetch rooms'));
@@ -28,7 +28,7 @@ export async function listPublicRooms(moduleCode?: string): Promise<Room[]> {
 }
 
 export async function createRoom(req: CreateRoomRequest): Promise<RoomDetails> {
-  const res = await apiFetch(API_PATH, 'POST', {...includeCred, body: JSON.stringify(req)});
+  const res = await apiFetch(PATH, 'POST', {...includeCred, body: JSON.stringify(req)});
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to create room'));
 
@@ -36,14 +36,14 @@ export async function createRoom(req: CreateRoomRequest): Promise<RoomDetails> {
 }
 
 export async function joinRoom(req: JoinRoomRequest): Promise<RoomDetails> {
-  const res = await apiFetch(`${API_PATH}-join`, 'POST', {...includeCred, body: JSON.stringify(req)});
+  const res = await apiFetch(`${PATH}-join`, 'POST', {...includeCred, body: JSON.stringify(req)});
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to join room'));
   return { room: (data.room ?? data) as Room, members: (data.members as RoomDetails['members']) ?? [] };
 }
 
 export async function getRoomDetails(roomId: string): Promise<RoomDetails> {
-  const res = await apiFetch(`${API_PATH}/${roomId}`, 'GET', includeCred)
+  const res = await apiFetch(`${PATH}/${roomId}`, 'GET', includeCred);
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Room not found'));
   return { room: (data.room ?? data) as Room, members: (data.members as RoomDetails['members']) ?? [] };
