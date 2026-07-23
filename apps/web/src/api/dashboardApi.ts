@@ -40,3 +40,22 @@ export async function addMemeToPG(meme: MemeDTO): Promise<Meme> {
     const createdMeme = res.json()
     return createdMeme
 }
+
+export async function selectMemePG(payload: { userId: string; memeId: string }) {
+  const res = await fetch('/api/dashboard/select-meme', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  
+  if (!res.ok) {
+    throw new Error('Failed to update selected meme');
+  }
+  return res;
+}
+
+export async function getAllMemes() {
+  const response = await fetch(`http://${BASE}/api/memes`);
+  if (!response.ok) throw new Error('Failed to fetch all memes');
+  return response.json();
+}

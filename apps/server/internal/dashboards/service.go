@@ -17,3 +17,11 @@ func (s *Service) AddMeme(meme *SubmittedMemeDTO) (*MemeDTO, error) {
 	createdMeme, err := s.repo.AddMeme(meme)
 	return createdMeme, err
 }
+
+func (s *Service) SelectMeme(req *SelectMemeDTO) error {
+	return s.repo.SetSelectedMeme(req.UserID, req.MemeID)
+}
+
+func (s *Service) GetSelectedMemeID(userId string) (*string, error) {
+	return s.repo.GetSelectedMemeID(userId)
+}

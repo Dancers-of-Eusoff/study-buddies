@@ -1,5 +1,6 @@
 export interface DashboardResponse {
 	memes: Meme[]
+	selectedMemeId?: string;
 }
 
 export interface Meme {

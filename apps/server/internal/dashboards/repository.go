@@ -1,10 +1,14 @@
 package dashboards
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type Repository interface {
 	GetMemesByUser(userId string) (*[]MemeDTO, error)
 	AddMeme(meme *SubmittedMemeDTO) (*MemeDTO, error)
+	SetSelectedMeme(userId string, memeId string) error
+	GetSelectedMemeID(userId string) (*string, error)
 }
 
 type DashboardRepo struct {
@@ -17,13 +21,14 @@ func NewDashboardRepo(db *sql.DB) *DashboardRepo {
 
 func (r *DashboardRepo) GetMemesByUser(userId string) (*[]MemeDTO, error) {
 	var memes []MemeDTO
-	query := `SELECT id, title, video_url, thumbnail_url, created_at FROM memes
-			WHERE uploader_id = $1 OR is_public`
+	query := `SELECT id, title, video_url, thumbnail_url, created_at FROM memes WHERE uploader_id = $1`
 
 	rows, err := r.db.Query(query, userId)
 	if err != nil {
 		return &[]MemeDTO{}, err
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var meme MemeDTO
 		if err := rows.Scan(
@@ -58,4 +63,27 @@ func (r *DashboardRepo) AddMeme(meme *SubmittedMemeDTO) (*MemeDTO, error) {
 	}
 
 	return &createdMeme, nil
+}
+
+func (r *DashboardRepo) SetSelectedMeme(userId string, memeId string) error {
+	query := `UPDATE users SET selected_meme_id = $1 WHERE id = $2`
+	_, err := r.db.Exec(query, memeId, userId)
+	return err
+}
+
+func (r *DashboardRepo) GetSelectedMemeID(userId string) (*string, error) {
+	var selectedMemeID sql.NullString
+	query := `SELECT selected_meme_id FROM users WHERE id = $1`
+	err := r.db.QueryRow(query, userId).Scan(&selectedMemeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if !selectedMemeID.Valid {
+		return nil, nil
+	}
+	s := selectedMemeID.String
+	return &s, nil
 }

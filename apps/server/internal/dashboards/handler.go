@@ -14,8 +14,9 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("QUERY /api/dashboard/me", h.Me)
-	mux.HandleFunc("POST /api/dashboard/submit-meme", h.AddMeme)
+	mux.HandleFunc("/api/dashboard/me", h.Me)
+	mux.HandleFunc("/api/dashboard/submit-meme", h.AddMeme)
+	mux.HandleFunc("/api/dashboard/select-meme", h.SelectMeme)
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
@@ -31,12 +32,24 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	selectedMemeID, _ := h.service.GetSelectedMemeID(req.UserID)
+
+	resp := DashboardResponse{
+		Memes:          *memes,
+		SelectedMemeID: selectedMemeID,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(memes)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	var req SubmittedMemeDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
@@ -52,4 +65,23 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(createdMeme)
+}
+
+func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
+	// Explicitly check for PUT method to support select-meme requests securely
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req SelectMemeDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid Request", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.SelectMeme(&req); err != nil {
+		http.Error(w, "Failed to select meme", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
