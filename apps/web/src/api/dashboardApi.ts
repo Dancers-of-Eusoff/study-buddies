@@ -16,14 +16,16 @@ export async function addMemeToCloud(uploadedMeme: File) {
     const formData = new FormData()
     formData.append("file", uploadedMeme)
     formData.append("upload_preset", "study_buddies")
-    const response = await fetch(
+    const res = await fetch(
         "https://api.cloudinary.com/v1_1/jlixjhrm/upload",
         {
           method: "post",
           body: formData
         }
       );
-    const meme = await response.json();
+    if (!res.ok)
+        throw new Error('Failed to upload meme to cloud')
+    const meme = await res.json();
     return meme.url;
 }
 
