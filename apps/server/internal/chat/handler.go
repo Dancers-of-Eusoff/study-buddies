@@ -3,7 +3,7 @@ package chat
 import (
 	"net/http"
 
-	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
 type Handler struct {
@@ -15,7 +15,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/chat/history", internal.RequireAuth(h.HandleChatHistory))
+	mux.HandleFunc("GET /api/chat/history", helper.RequireAuth(h.HandleChatHistory))
 }
 
 func (h *Handler) HandleChatHistory(w http.ResponseWriter, r *http.Request) {
@@ -29,5 +29,5 @@ func (h *Handler) HandleChatHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
 		return
 	}
-	internal.WriteJSON(w, http.StatusOK, msgs)
+	helper.WriteJSON(w, http.StatusOK, msgs)
 }

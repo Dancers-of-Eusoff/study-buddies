@@ -3,7 +3,7 @@ package sessions
 import (
 	"net/http"
 
-	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
 type Handler struct {
@@ -15,14 +15,14 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/sessions/start", internal.RequireAuth(h.handleStart))
-	mux.HandleFunc("POST /api/sessions/end", internal.RequireAuth(h.handleEnd))
-	mux.HandleFunc("POST /api/sessions/interval", internal.RequireAuth(h.handleLogInterval))
+	mux.HandleFunc("POST /api/sessions/start", helper.RequireAuth(h.handleStart))
+	mux.HandleFunc("POST /api/sessions/end", helper.RequireAuth(h.handleEnd))
+	mux.HandleFunc("POST /api/sessions/interval", helper.RequireAuth(h.handleLogInterval))
 }
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
 	var req StartSessionRequest
-	if err := internal.DecodeJSON(w, r, &req); err != nil {
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -32,12 +32,12 @@ func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internal.WriteJSON(w, http.StatusCreated, session)
+	helper.WriteJSON(w, http.StatusCreated, session)
 }
 
 func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
 	var req EndSessionRequest
-	if err := internal.DecodeJSON(w, r, &req); err != nil {
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -55,12 +55,12 @@ func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internal.WriteJSON(w, http.StatusOK, session)
+	helper.WriteJSON(w, http.StatusOK, session)
 }
 
 func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
 	var req LogIntervalRequest
-	if err := internal.DecodeJSON(w, r, &req); err != nil {
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -78,5 +78,5 @@ func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internal.WriteJSON(w, http.StatusOK, interval)
+	helper.WriteJSON(w, http.StatusOK, interval)
 }

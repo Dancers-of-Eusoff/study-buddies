@@ -1,20 +1,13 @@
-package internal
+package helper
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
-
-	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/auth"
 )
 
 type contextKey string
 const userContextKey contextKey = "user"
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
 
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +16,7 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			WriteError(w, http.StatusUnauthorized, ErrMissingToken)
 			return
 		}
-		claims, err := auth.ValidateToken(cookie.Value)
+		claims, err := ValidateToken(cookie.Value)
 		if err != nil {
 			WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
 			return
@@ -53,13 +46,7 @@ func WriteError(w http.ResponseWriter, status int, err error) {
 	WriteJSON(w, status, ErrorResponse{Error: err.Error()})
 }
 
-func UserFromContext(ctx context.Context) (*auth.Claims, bool) {
-	claims, ok := ctx.Value(userContextKey).(*auth.Claims)
+func UserFromContext(ctx context.Context) (*Claims, bool) {
+	claims, ok := ctx.Value(userContextKey).(*Claims)
 	return claims, ok
 }
-
-var (
-	ErrMissingToken	= errors.New("Token not found, try logging in again.")
-	ErrInvalidToken = errors.New("invalid or expired token")
-	ErrInvalidJSON = errors.New("Invalid JSON Request")
-)

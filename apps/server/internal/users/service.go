@@ -4,25 +4,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
-	"time"
 
-	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/auth"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
 	repo      Repository
-	jwtSecret []byte
 }
 
 func NewService(repo Repository) *Service {
-	return &Service{
-		repo:      repo,
-		jwtSecret: []byte(os.Getenv("JWT_SECRET")),
-	}
+	return &Service{repo: repo}
 }
 
 func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
@@ -59,7 +52,7 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 			Username: req.Username,
 		}
 
-		accessToken, err := s.GenerateRefreshToken(userDTO)
+		accessToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
 		if err != nil {
 			return UserDTO{}, "", fmt.Errorf("access token: %w", err)
 		}
@@ -86,7 +79,7 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 			ID: user.ID,
 			Username: user.Username,
 		}
-		accessToken, err := s.GenerateAccessToken(&userDTO)
+		accessToken, err := helper.GenerateAccessToken(userDTO.ID, userDTO.Username)
 		if err != nil {
 			return UserDTO{}, "", fmt.Errorf("access token: %w", err)
 		}
@@ -100,32 +93,6 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 	default:
 		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
 	}
-}
-
-func (s *Service) GenerateAccessToken(user *UserDTO) (string, error) {
-	claims := &Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   user.ID,
-		},
-	}
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
-}
-
-func (s *Service) GenerateRefreshToken(user *UserDTO) (string, error) {
-	claims := &Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   user.ID,
-		},
-	}
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
 }
 
 func (s *Service) hashPassword(password string) (string, error) {

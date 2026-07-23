@@ -3,7 +3,7 @@ package dashboards
 import (
 	"net/http"
 
-	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
 type Handler struct {
@@ -15,12 +15,12 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/dashboard/me", internal.RequireAuth(h.Me))
-	mux.HandleFunc("POST /api/dashboard/submit-meme", internal.RequireAuth(h.AddMeme))
+	mux.HandleFunc("GET /api/dashboard/me", helper.RequireAuth(h.Me))
+	mux.HandleFunc("POST /api/dashboard/submit-meme", helper.RequireAuth(h.AddMeme))
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	user, ok := internal.UserFromContext(r.Context())
+	user, ok := helper.UserFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Unable to get UserContext", http.StatusInternalServerError)
 		return
@@ -32,12 +32,12 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internal.WriteJSON(w, http.StatusOK, memes)
+	helper.WriteJSON(w, http.StatusOK, memes)
 }
 
 func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 	var req SubmittedMemeDTO
-	if err := internal.DecodeJSON(w, r, &req); err != nil {
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -47,5 +47,5 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internal.WriteJSON(w, http.StatusCreated, createdMeme)
+	helper.WriteJSON(w, http.StatusCreated, createdMeme)
 }

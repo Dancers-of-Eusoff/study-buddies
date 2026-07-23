@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
 var isProd bool = os.Getenv("ENV") == "production"
@@ -20,19 +20,19 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/register", h.handleRegister)
 	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
-	mux.HandleFunc("POST /api/auth/logout", internal.RequireAuth(h.handleLogout))
+	mux.HandleFunc("POST /api/auth/logout", helper.RequireAuth(h.handleLogout))
 	// mux.HandleFunc("/api/auth/me", h.handleMe)
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := internal.DecodeJSON(w, r, &req); err != nil {
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
 	user, accessToken, err := h.service.Register(req)
 	if err != nil {
-		internal.WriteError(w, http.StatusBadRequest, err)
+		helper.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &accessCookie)
 
-	internal.WriteJSON(w, http.StatusCreated, AuthResponse{
+	helper.WriteJSON(w, http.StatusCreated, AuthResponse{
 		Username: user.Username,
 		UserID:   user.ID,
 	})
@@ -55,13 +55,13 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := internal.DecodeJSON(w, r, &req); err != nil {
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
 	user, accessToken, err := h.service.Login(req)
 	if err != nil {
-		internal.WriteError(w, http.StatusUnauthorized, err)
+		helper.WriteError(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &accessCookie)
 	// http.SetCookie(w, &refreshCookie)
 
-	internal.WriteJSON(w, http.StatusOK, AuthResponse{
+	helper.WriteJSON(w, http.StatusOK, AuthResponse{
 		Username: user.Username,
 		UserID:   user.ID,
 	})
@@ -100,24 +100,24 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 // func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 // 	if r.Method != http.MethodGet {
-// 		internal.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+// 		helper.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 // 		return
 // 	}
 
 // 	authHeader := r.Header.Get("Authorization")
 // 	if !strings.HasPrefix(authHeader, "Bearer ") {
-// 		internal.WriteError(w, http.StatusUnauthorized, ErrMissingHeader)
+// 		helper.WriteError(w, http.StatusUnauthorized, ErrMissingHeader)
 // 		return
 // 	}
 
 // 	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 // 	claims, err := h.service.ValidateToken(tokenStr)
 // 	if err != nil {
-// 		internal.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+// 		helper.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
 // 		return
 // 	}
 
-// 	internal.WriteJSON(w, http.StatusOK, map[string]string{
+// 	helper.WriteJSON(w, http.StatusOK, map[string]string{
 // 		"userId":   claims.UserID,
 // 		"username": claims.Username,
 // 	})
