@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types';
-// import { fetchMe } from '../api/authApi';
+import { fetchMe } from '../api/authApi';
 import apiFetch from '../api/apiFetch';
 
 interface AuthContextValue {
@@ -18,14 +18,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // const stored = localStorage.getItem(TOKEN_KEY);
-    // if (!stored) { setIsLoading(false); return; }
-    // fetchMe(stored)
-    //   .then((u) => { setToken(stored); setUser(u); })
-    //   .catch(() => localStorage.removeItem(TOKEN_KEY))
-    //   .finally(() => setIsLoading(false));
-    setUser({userId: "bcrypt", username: "bcrypt"})
-    setIsLoading(false)
+    fetchMe()
+      .then((u) => setUser(u))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false));
   }, []);
 
   function login(newUser: User) {

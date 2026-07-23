@@ -3,6 +3,7 @@ package helper
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -18,7 +19,11 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		claims, err := ValidateToken(cookie.Value)
 		if err != nil {
-			WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+			if errors.Is(err, ErrInvalidToken) {
+            	WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+				return
+        	}
+			WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 

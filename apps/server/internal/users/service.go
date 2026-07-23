@@ -18,24 +18,24 @@ func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
+func (s *Service) Register(req RegisterRequest) (UserDTO, string, string, error) {
 	req.Username = strings.TrimSpace(req.Username)
 
 	if len(req.Username) < 3 || len(req.Username) > 20 {
-		return UserDTO{}, "", ErrUsernameLength
+		return UserDTO{}, "", "", ErrUsernameLength
 	}
 	if len(req.Password) < 6 {
-		return UserDTO{}, "", ErrPasswordLength
+		return UserDTO{}, "", "", ErrPasswordLength
 	}
 
 	_, err := s.repo.FindByUsername(req.Username)
 	switch {
 	case err == nil:
-		return UserDTO{}, "", ErrUserExists
+		return UserDTO{}, "", "", ErrUserExists
 	case errors.Is(err, sql.ErrNoRows):
 		hash, err := s.hashPassword(req.Password)
 		if err != nil {
-			return UserDTO{}, "", fmt.Errorf("creating user: %w", err)
+			return UserDTO{}, "", "", fmt.Errorf("creating user: %w", err)
 		}
 		user := &CreateUserParams{
 			Username: req.Username,
@@ -44,7 +44,7 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 
 		id, err := s.repo.CreateUser(user)
 		if err != nil {
-			return UserDTO{}, "", err
+			return UserDTO{}, "", "", err
 		}
 
 		userDTO := &UserDTO{
@@ -54,26 +54,26 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 
 		accessToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
 		if err != nil {
-			return UserDTO{}, "", fmt.Errorf("access token: %w", err)
+			return UserDTO{}, "", "", fmt.Errorf("access token: %w", err)
 		}
-		// refreshToken, err := s.GenerateRefreshToken(userDTO)
-		// if err != nil {
-		// 	return UserDTO{}, "", fmt.Errorf("access token: %w", err)
-		// }
+		refreshToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("refresh token: %w", err)
+		}
 
-		return *userDTO, accessToken, err
+		return *userDTO, accessToken, refreshToken, err
 	default:
-		return UserDTO{}, "", fmt.Errorf("checking existing user: %w", err)
+		return UserDTO{}, "", "", fmt.Errorf("checking existing user: %w", err)
 	}
 
 }
 
-func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
+func (s *Service) Login(req LoginRequest) (UserDTO, string, string, error) {
 	user, err := s.repo.FindByUsername(req.Username)
 	switch {
 	case err == nil:
 		if !s.checkPassword(req.Password, user.PasswordHash){
-			return UserDTO{}, "", ErrInvalidAuth
+			return UserDTO{}, "", "", ErrInvalidAuth
 		}
 		userDTO := UserDTO{
 			ID: user.ID,
@@ -81,18 +81,26 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 		}
 		accessToken, err := helper.GenerateAccessToken(userDTO.ID, userDTO.Username)
 		if err != nil {
-			return UserDTO{}, "", fmt.Errorf("access token: %w", err)
+			return UserDTO{}, "", "", fmt.Errorf("access token: %w", err)
 		}
-		// refreshToken, err := s.GenerateRefreshToken(userDTO)
-		// if err != nil {
-		// 	return UserDTO{}, "", fmt.Errorf("access token: %w", err)
-		// }
-		return userDTO, accessToken, err
+		refreshToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("refresh token: %w", err)
+		}
+		return userDTO, accessToken, refreshToken, err
 	case errors.Is(err, sql.ErrNoRows):
-		return UserDTO{}, "", ErrInvalidAuth
+		return UserDTO{}, "", "", ErrInvalidAuth
 	default:
-		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
+		return UserDTO{}, "", "", fmt.Errorf("unable to login: %w", err)
 	}
+}
+
+func (s *Service) Refresh(claims *helper.Claims) (string, error) {
+	accessToken, err := helper.GenerateAccessToken(claims.ID, claims.Username)
+	if err != nil {
+		return "", fmt.Errorf("new access token: %w", err)
+	}
+	return accessToken, nil
 }
 
 func (s *Service) hashPassword(password string) (string, error) {

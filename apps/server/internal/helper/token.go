@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -18,6 +19,9 @@ func ValidateToken(tokenStr string) (*Claims, error) {
 		return jwtSecret, nil
 	})
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+            return nil, ErrInvalidToken
+        }
 		return nil, err
 	}
 

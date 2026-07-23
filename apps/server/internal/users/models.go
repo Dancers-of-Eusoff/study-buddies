@@ -3,8 +3,6 @@ package users
 import (
 	"errors"
 	"time"
-	
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type User struct {
@@ -26,19 +24,12 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
-	// Token    string `json:"token"`
 	Username string `json:"username"`
 	UserID   string `json:"userId"`
 }
 
 type ErrorResponse struct {
 	Error string `json:"error"`
-}
-
-type Claims struct {
-	UserID   string `json:"userId"`
-	Username string `json:"username"`
-	jwt.RegisteredClaims
 }
 
 type CreateUserParams struct {
