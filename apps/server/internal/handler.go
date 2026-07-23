@@ -28,12 +28,12 @@ func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("accessToken")
 		if err != nil {
-			h.WriteError(w, http.StatusUnauthorized, ErrMissingToken)
+			WriteError(w, http.StatusUnauthorized, ErrMissingToken)
 			return
 		}
 		claims, err := auth.ValidateToken(cookie.Value, h.jwtSecret)
 		if err != nil {
-			h.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+			WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
 			return
 		}
 
@@ -42,14 +42,24 @@ func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (h *Handler) WriteJSON(w http.ResponseWriter, status int, v interface{}) {
+
+// Error is written to front end here, so caller just return
+func DecodeJSON[T any](w http.ResponseWriter,r *http.Request, req *T) error {
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		WriteError(w, http.StatusInternalServerError, ErrInvalidJSON)
+		return ErrInvalidJSON
+	}
+	return nil
+}
+
+func WriteJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func (h *Handler) WriteError(w http.ResponseWriter, status int, err error) {
-	h.WriteJSON(w, status, ErrorResponse{Error: err.Error()})
+func WriteError(w http.ResponseWriter, status int, err error) {
+	WriteJSON(w, status, ErrorResponse{Error: err.Error()})
 }
 
 func UserFromContext(ctx context.Context) (*auth.Claims, bool) {
@@ -59,5 +69,6 @@ func UserFromContext(ctx context.Context) (*auth.Claims, bool) {
 
 var (
 	ErrMissingToken	= errors.New("Token not found, try logging in again.")
-	ErrInvalidToken     = errors.New("invalid or expired token")
+	ErrInvalidToken = errors.New("invalid or expired token")
+	ErrInvalidJSON = errors.New("Invalid JSON Request")
 )

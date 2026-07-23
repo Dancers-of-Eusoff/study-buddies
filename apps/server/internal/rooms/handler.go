@@ -1,7 +1,6 @@
 package rooms
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -28,8 +27,7 @@ func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req CreateRoomRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.base.WriteError(w, http.StatusBadRequest, errors.New("invalid JSON body"))
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -39,7 +37,7 @@ func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusCreated, response)
+	internal.WriteJSON(w, http.StatusCreated, response)
 }
 
 func (h *Handler) listPublicRooms(w http.ResponseWriter, r *http.Request) {
@@ -49,19 +47,18 @@ func (h *Handler) listPublicRooms(w http.ResponseWriter, r *http.Request) {
 
 	rooms, err := h.service.ListPublicRooms(moduleCode)
 	if err != nil {
-		h.base.WriteError(w, http.StatusInternalServerError, err)
+		internal.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusOK, rooms)
+	internal.WriteJSON(w, http.StatusOK, rooms)
 }
 
 func (h *Handler) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req JoinRoomRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.base.WriteError(w, http.StatusBadRequest, errors.New("invalid JSON body"))
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -71,7 +68,7 @@ func (h *Handler) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusOK, response)
+	internal.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +76,7 @@ func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 
 	roomID := r.PathValue("roomID")
 	if roomID == "" {
-		h.base.WriteError(w, http.StatusBadRequest, errors.New("room id is required"))
+		internal.WriteError(w, http.StatusBadRequest, errors.New("room id is required"))
 		return
 	}
 
@@ -89,20 +86,20 @@ func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusOK, response)
+	internal.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrRoomNotFound):
-		h.base.WriteError(w, http.StatusNotFound, err)
+		internal.WriteError(w, http.StatusNotFound, err)
 	case errors.Is(err, ErrInvalidRoomType),
 		errors.Is(err, ErrInviteCodeRequired),
 		errors.Is(err, ErrRoomIDRequired),
 		errors.Is(err, ErrUserIDRequired),
 		errors.Is(err, ErrRoomNameRequired):
-		h.base.WriteError(w, http.StatusBadRequest, err)
+		internal.WriteError(w, http.StatusBadRequest, err)
 	default:
-		h.base.WriteError(w, http.StatusInternalServerError, err)
+		internal.WriteError(w, http.StatusInternalServerError, err)
 	}
 }

@@ -30,5 +30,5 @@ func (h *Handler) HandleChatHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
 		return
 	}
-	h.base.WriteJSON(w, http.StatusOK, msgs)
+	internal.WriteJSON(w, http.StatusOK, msgs)
 }

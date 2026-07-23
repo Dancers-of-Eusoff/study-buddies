@@ -1,7 +1,6 @@
 package dashboards
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
@@ -35,15 +34,12 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(memes)
+	internal.WriteJSON(w, http.StatusOK, memes)
 }
 
 func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 	var req SubmittedMemeDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -53,7 +49,5 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdMeme)
+	internal.WriteJSON(w, http.StatusCreated, createdMeme)
 }

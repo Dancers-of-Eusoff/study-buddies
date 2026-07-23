@@ -1,7 +1,6 @@
 package users
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 
@@ -28,14 +27,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.base.WriteError(w, http.StatusBadRequest, ErrInvalidJSON)
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
 	user, accessToken, err := h.service.Register(req)
 	if err != nil {
-		h.base.WriteError(w, http.StatusBadRequest, err)
+		internal.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -50,7 +48,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &accessCookie)
 
-	h.base.WriteJSON(w, http.StatusCreated, AuthResponse{
+	internal.WriteJSON(w, http.StatusCreated, AuthResponse{
 		Username: user.Username,
 		UserID:   user.ID,
 	})
@@ -58,14 +56,13 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.base.WriteError(w, http.StatusBadRequest, ErrInvalidJSON)
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
 	user, accessToken, err := h.service.Login(req)
 	if err != nil {
-		h.base.WriteError(w, http.StatusUnauthorized, err)
+		internal.WriteError(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -82,7 +79,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &accessCookie)
 	// http.SetCookie(w, &refreshCookie)
 
-	h.base.WriteJSON(w, http.StatusOK, AuthResponse{
+	internal.WriteJSON(w, http.StatusOK, AuthResponse{
 		Username: user.Username,
 		UserID:   user.ID,
 	})
@@ -104,24 +101,24 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 // func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 // 	if r.Method != http.MethodGet {
-// 		h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+// 		internal.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 // 		return
 // 	}
 
 // 	authHeader := r.Header.Get("Authorization")
 // 	if !strings.HasPrefix(authHeader, "Bearer ") {
-// 		h.base.WriteError(w, http.StatusUnauthorized, ErrMissingHeader)
+// 		internal.WriteError(w, http.StatusUnauthorized, ErrMissingHeader)
 // 		return
 // 	}
 
 // 	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 // 	claims, err := h.service.ValidateToken(tokenStr)
 // 	if err != nil {
-// 		h.base.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+// 		internal.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
 // 		return
 // 	}
 
-// 	h.base.WriteJSON(w, http.StatusOK, map[string]string{
+// 	internal.WriteJSON(w, http.StatusOK, map[string]string{
 // 		"userId":   claims.UserID,
 // 		"username": claims.Username,
 // 	})

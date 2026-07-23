@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
@@ -27,8 +26,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
 	var req StartSessionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -38,13 +36,12 @@ func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusCreated, session)
+	internal.WriteJSON(w, http.StatusCreated, session)
 }
 
 func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
 	var req EndSessionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -62,13 +59,12 @@ func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusOK, session)
+	internal.WriteJSON(w, http.StatusOK, session)
 }
 
 func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
 	var req LogIntervalRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	if err := internal.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -86,5 +82,5 @@ func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.base.WriteJSON(w, http.StatusOK, interval)
+	internal.WriteJSON(w, http.StatusOK, interval)
 }
