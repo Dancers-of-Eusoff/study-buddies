@@ -10,18 +10,17 @@ import (
 var isProd bool = os.Getenv("ENV") == "production"
 
 type Handler struct {
-	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(base *internal.Handler, service *Service) *Handler {
-	return &Handler{base: base, service: service}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/register", h.handleRegister)
 	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
-	mux.HandleFunc("POST /api/auth/logout", h.base.RequireAuth(h.handleLogout))
+	mux.HandleFunc("POST /api/auth/logout", internal.RequireAuth(h.handleLogout))
 	// mux.HandleFunc("/api/auth/me", h.handleMe)
 }
 

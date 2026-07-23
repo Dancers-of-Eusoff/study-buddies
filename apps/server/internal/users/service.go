@@ -75,29 +75,6 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 
 }
 
-// func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
-// 	user, err := s.repo.FindByUsername(req.Username)
-// 	switch {
-// 	case err == nil:
-// 		if !s.checkPassword(req.Password, user.PasswordHash){
-// 			return UserDTO{}, "", ErrInvalidAuth
-// 		}
-// 		userDTO := &UserDTO{
-// 			ID: user.ID,
-// 			Username: user.Username,
-// 		}
-// 		accessToken, err := s.GenerateAccessToken(userDTO)
-// 		if err != nil {
-// 			return UserDTO{}, "", fmt.Errorf("access token: %w", err)
-// 		}
-// 		return UserDTO{}, accessToken, err
-// 	case errors.Is(err, sql.ErrNoRows):
-// 		return UserDTO{}, "", ErrInvalidAuth
-// 	default:
-// 		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
-// 	}
-// }
-
 func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
 	user, err := s.repo.FindByUsername(req.Username)
 	switch {

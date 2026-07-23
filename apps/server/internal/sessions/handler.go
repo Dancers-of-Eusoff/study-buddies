@@ -7,21 +7,17 @@ import (
 )
 
 type Handler struct {
-	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(base *internal.Handler, service *Service) *Handler {
-	return &Handler{
-		base: base,
-		service: service,
-	}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/sessions/start", h.base.RequireAuth(h.handleStart))
-	mux.HandleFunc("POST /api/sessions/end", h.base.RequireAuth(h.handleEnd))
-	mux.HandleFunc("POST /api/sessions/interval", h.base.RequireAuth(h.handleLogInterval))
+	mux.HandleFunc("POST /api/sessions/start", internal.RequireAuth(h.handleStart))
+	mux.HandleFunc("POST /api/sessions/end", internal.RequireAuth(h.handleEnd))
+	mux.HandleFunc("POST /api/sessions/interval", internal.RequireAuth(h.handleLogInterval))
 }
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {

@@ -8,19 +8,18 @@ import (
 )
 
 type Handler struct {
-	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(base *internal.Handler, service *Service) *Handler {
-	return &Handler{base: base, service: service}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/rooms-join", h.base.RequireAuth(h.handleJoinRoom))
-	mux.HandleFunc("GET /api/rooms/{roomID}", h.base.RequireAuth(h.handleRoomByID))
-	mux.HandleFunc("GET /api/rooms", h.base.RequireAuth(h.listPublicRooms))
-	mux.HandleFunc("POST /api/rooms", h.base.RequireAuth(h.createRoom))
+	mux.HandleFunc("POST /api/rooms-join", internal.RequireAuth(h.handleJoinRoom))
+	mux.HandleFunc("GET /api/rooms/{roomID}", internal.RequireAuth(h.handleRoomByID))
+	mux.HandleFunc("GET /api/rooms", internal.RequireAuth(h.listPublicRooms))
+	mux.HandleFunc("POST /api/rooms", internal.RequireAuth(h.createRoom))
 }
 
 func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {

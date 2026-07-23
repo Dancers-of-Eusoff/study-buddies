@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	// "time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -18,8 +20,9 @@ type UserDTO struct {
 	ID			string	`json:"id"`
 	Username	string	`json:"username"`
 }
+var jwtSecret []byte = []byte(os.Getenv("JWT_SECRET"))
 
-func ValidateToken(tokenStr string, jwtSecret []byte) (*Claims, error) {
+func ValidateToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")

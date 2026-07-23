@@ -7,16 +7,15 @@ import (
 )
 
 type Handler struct {
-	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(base *internal.Handler, service *Service) *Handler {
-	return &Handler{base: base, service: service}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/chat/history", h.base.RequireAuth(h.HandleChatHistory))
+	mux.HandleFunc("GET /api/chat/history", internal.RequireAuth(h.HandleChatHistory))
 }
 
 func (h *Handler) HandleChatHistory(w http.ResponseWriter, r *http.Request) {

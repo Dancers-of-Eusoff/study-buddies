@@ -16,22 +16,14 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type Handler struct {
-	jwtSecret	[]byte
-}
-
-func NewHandler(jwtSecret []byte) *Handler {
-	return &Handler{jwtSecret: jwtSecret}
-}
-
-func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
+func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("accessToken")
 		if err != nil {
 			WriteError(w, http.StatusUnauthorized, ErrMissingToken)
 			return
 		}
-		claims, err := auth.ValidateToken(cookie.Value, h.jwtSecret)
+		claims, err := auth.ValidateToken(cookie.Value)
 		if err != nil {
 			WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
 			return
@@ -41,7 +33,6 @@ func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r.WithContext(ctx))
 	}
 }
-
 
 // Error is written to front end here, so caller just return
 func DecodeJSON[T any](w http.ResponseWriter,r *http.Request, req *T) error {

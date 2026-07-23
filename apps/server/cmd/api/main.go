@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
@@ -75,35 +74,34 @@ func main() {
 	go wsHub.Run()
 
 	// --- Existing Feature Packages ---
-	base := internal.NewHandler([]byte(os.Getenv("JWT_SECRET")))
 	// --- Chat Service (wired to WebSocket hub) ---
 	chatRepo := chat.NewMemoryRepository()
 	chatService := chat.NewService(chatRepo, wsHub)
-	chatHandler := chat.NewHandler(base, chatService)
+	chatHandler := chat.NewHandler(chatService)
 	chatHandler.RegisterRoutes(mux)
 
 	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
-	roomHandler := rooms.NewHandler(base, roomService)
+	roomHandler := rooms.NewHandler(roomService)
 	roomHandler.RegisterRoutes(mux)
 
 	// Not Connected to DB
 	sessionRepo := sessions.NewMemoryRepository()
 	sessionService := sessions.NewService(sessionRepo)
-	sessionHandler := sessions.NewHandler(base, sessionService)
+	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
 
 	// Connected to DB
-	userRepo := users.NewUserRepo(db)
-	userService := users.NewService(userRepo)
-	userHandler := users.NewHandler(base, userService)
-	userHandler.RegisterRoutes(mux)
-
 	dashboardRepo := dashboards.NewDashboardRepo(db)
 	dashboardService := dashboards.NewService(dashboardRepo)
-	dashboardHandler := dashboards.NewHandler(base, dashboardService)
+	dashboardHandler := dashboards.NewHandler(dashboardService)
 	dashboardHandler.RegisterRoutes(mux)
+	
+	userRepo := users.NewUserRepo(db)
+	userService := users.NewService(userRepo)
+	userHandler := users.NewHandler(userService)
+	userHandler.RegisterRoutes(mux)
 
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
