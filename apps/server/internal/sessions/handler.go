@@ -16,16 +16,16 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/sessions/start", h.handleStart)
-	mux.HandleFunc("/api/sessions/end", h.handleEnd)
-	mux.HandleFunc("/api/sessions/interval", h.handleLogInterval)
+	mux.HandleFunc("POST /api/sessions/start", h.handleStart)
+	mux.HandleFunc("POST /api/sessions/end", h.handleEnd)
+	mux.HandleFunc("POST /api/sessions/interval", h.handleLogInterval)
 }
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	// if r.Method != http.MethodPost {
+	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	// 	return
+	// }
 
 	var req StartSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -45,10 +45,10 @@ func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	// if r.Method != http.MethodPost {
+	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	// 	return
+	// }
 
 	var req EndSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -76,10 +76,10 @@ func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	// if r.Method != http.MethodPost {
+	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	// 	return
+	// }
 
 	var req LogIntervalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

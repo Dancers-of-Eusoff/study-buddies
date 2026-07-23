@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 )
@@ -20,23 +19,10 @@ func NewHandler(base *internal.Handler, service *Service) *Handler {
 
 // assign http to function
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/rooms-join", h.base.RequireAuth(h.handleJoinRoom))
-	mux.HandleFunc("/api/rooms/", h.base.RequireAuth(h.handleRoomByID))
-	mux.HandleFunc("/api/rooms", h.base.RequireAuth(h.handleRooms))
-}
-
-// basically, w for output, r for input
-func (h *Handler) handleRooms(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		h.createRoom(w, r)
-
-	case http.MethodGet:
-		h.listPublicRooms(w, r)
-
-	default:
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-	}
+	mux.HandleFunc("POST /api/rooms-join", h.base.RequireAuth(h.handleJoinRoom))
+	mux.HandleFunc("GET /api/rooms/{roomID}", h.base.RequireAuth(h.handleRoomByID))
+	mux.HandleFunc("GET /api/rooms", h.base.RequireAuth(h.listPublicRooms))
+	mux.HandleFunc("POST /api/rooms", h.base.RequireAuth(h.createRoom))
 }
 
 func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
@@ -44,17 +30,17 @@ func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateRoomRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		h.base.WriteError(w, http.StatusBadRequest, errors.New("invalid JSON body"))
 		return
 	}
 
 	response, err := h.service.CreateRoom(req)
 	if err != nil {
-		writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response)
+	h.base.WriteJSON(w, http.StatusCreated, response)
 }
 
 func (h *Handler) listPublicRooms(w http.ResponseWriter, r *http.Request) {
@@ -64,82 +50,80 @@ func (h *Handler) listPublicRooms(w http.ResponseWriter, r *http.Request) {
 
 	rooms, err := h.service.ListPublicRooms(moduleCode)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		h.base.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, rooms)
+	h.base.WriteJSON(w, http.StatusOK, rooms)
 }
 
 func (h *Handler) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	if r.Method != http.MethodPost {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
+	// if r.Method != http.MethodPost {
+	// 	writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+	// 	return
+	// }
 
 	var req JoinRoomRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		h.base.WriteError(w, http.StatusBadRequest, errors.New("invalid JSON body"))
 		return
 	}
 
 	response, err := h.service.JoinRoom(req)
 	if err != nil {
-		writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response)
-	return
+	h.base.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	if r.Method != http.MethodGet {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
+	// if r.Method != http.MethodGet {
+	// 	writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+	// 	return
+	// }
 
-	roomID := strings.TrimPrefix(r.URL.Path, "/api/rooms/")
+	roomID := r.PathValue("roomID")
 	if roomID == "" {
-		writeJSONError(w, http.StatusBadRequest, "room id is required")
+		h.base.WriteError(w, http.StatusBadRequest, errors.New("room id is required"))
 		return
 	}
 
 	response, err := h.service.GetRoomDetails(roomID)
 	if err != nil {
-		writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response)
-	return
+	h.base.WriteJSON(w, http.StatusOK, response)
 }
 
-func writeServiceError(w http.ResponseWriter, err error) {
+func (h *Handler) writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrRoomNotFound):
-		writeJSONError(w, http.StatusNotFound, err.Error())
+		h.base.WriteError(w, http.StatusNotFound, err)
 	case errors.Is(err, ErrInvalidRoomType),
 		errors.Is(err, ErrInviteCodeRequired),
 		errors.Is(err, ErrRoomIDRequired),
 		errors.Is(err, ErrUserIDRequired),
 		errors.Is(err, ErrRoomNameRequired):
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		h.base.WriteError(w, http.StatusBadRequest, err)
 	default:
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		h.base.WriteError(w, http.StatusInternalServerError, err)
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
-}
+// func writeJSON(w http.ResponseWriter, status int, value any) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(status)
+// 	_ = json.NewEncoder(w).Encode(value)
+// }
 
-func writeJSONError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
-}
+// func writeJSONError(w http.ResponseWriter, status int, message string) {
+// 	writeJSON(w, status, map[string]string{"error": message})
+// }

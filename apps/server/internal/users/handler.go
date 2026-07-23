@@ -20,17 +20,17 @@ func NewHandler(base *internal.Handler, service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/auth/register", h.handleRegister)
-	mux.HandleFunc("/api/auth/login", h.handleLogin)
+	mux.HandleFunc("POST /api/auth/register", h.handleRegister)
+	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
 	mux.HandleFunc("POST /api/auth/logout", h.base.RequireAuth(h.handleLogout))
 	// mux.HandleFunc("/api/auth/me", h.handleMe)
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
+	// if r.Method != http.MethodPost {
+	// 	h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+	// 	return
+	// }
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -63,10 +63,10 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
+	// if r.Method != http.MethodPost {
+	// 	h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+	// 	return
+	// }
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
