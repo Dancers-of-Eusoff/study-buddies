@@ -1,22 +1,20 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types';
-import { fetchMe } from '../api/authApi';
+// import { fetchMe } from '../api/authApi';
+import apiFetch from '../api/apiFetch';
 
 interface AuthContextValue {
   user: User | null;
-  token: string | null;
   isLoading: boolean;  
-  login: (token: string, user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const TOKEN_KEY = 'sb_token';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -30,20 +28,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, []);
 
-  function login(newToken: string, newUser: User) {
-    // localStorage.setItem(TOKEN_KEY, newToken);
-    // setToken(newToken);
+  function login(newUser: User) {
     setUser(newUser);
   }
 
-  function logout() {
-    // localStorage.removeItem(TOKEN_KEY);
-    // setToken(null);
-    setUser(null);
+  async function logout() {
+    try {
+      await apiFetch('/auth/logout', 'POST', { credentials: 'include' })
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setUser(null);
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -74,12 +74,14 @@ func main() {
 	wsHub := websocket.NewHub()
 	go wsHub.Run()
 
+	// --- Existing Feature Packages ---
+	base := internal.NewHandler([]byte(os.Getenv("JWT_SECRET")))
 	// --- Chat Service (wired to WebSocket hub) ---
 	chatRepo := chat.NewMemoryRepository()
 	chatService := chat.NewService(chatRepo, wsHub)
+	chatHandler := chat.NewHandler(base, chatService)
+	chatHandler.RegisterRoutes(mux)
 
-	// --- Existing Feature Packages ---
-	base := internal.NewHandler([]byte(os.Getenv("JWT_SECRET")))
 	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
@@ -138,26 +140,6 @@ func main() {
 			}
 		}
 		})
-	})
-
-	// --- Chat history REST endpoint ---
-	mux.HandleFunc("/api/chat/history", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		roomID := r.URL.Query().Get("roomId")
-		if roomID == "" {
-			http.Error(w, "Missing roomId", http.StatusBadRequest)
-			return
-		}
-		msgs, err := chatService.GetHistory(roomID)
-		if err != nil {
-			http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(msgs)
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

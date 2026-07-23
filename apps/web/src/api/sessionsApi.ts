@@ -1,10 +1,8 @@
 import type { Session, FocusInterval, StartSessionRequest, EndSessionRequest, LogIntervalRequest } from '../types';
+import apiFetch from './apiFetch';
 
-const BASE = `${import.meta.env.VITE_BASE_URL}/api/sessions`;
-
-function authHeaders(token: string) {
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-}
+const PATH: string = '/sessions';
+const includeCred: RequestInit = { credentials: 'include' }
 
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
@@ -21,28 +19,22 @@ function friendlyError(raw: string, fallback: string): string {
   return raw;
 }
 
-export async function startSession(token: string, req: StartSessionRequest): Promise<Session> {
-  const res = await fetch(`${BASE}/start`, {
-    method: 'POST', headers: authHeaders(token), body: JSON.stringify(req),
-  });
+export async function startSession(req: StartSessionRequest): Promise<Session> {
+  const res = await apiFetch(`${PATH}/start`, 'POST', {...includeCred, body: JSON.stringify(req)})
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to start session'));
   return data as unknown as Session;
 }
 
-export async function endSession(token: string, req: EndSessionRequest): Promise<Session> {
-  const res = await fetch(`${BASE}/end`, {
-    method: 'POST', headers: authHeaders(token), body: JSON.stringify(req),
-  });
+export async function endSession(req: EndSessionRequest): Promise<Session> {
+  const res = await apiFetch(`${PATH}/end`, 'POST', {...includeCred, body: JSON.stringify(req)})
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to end session'));
   return data as unknown as Session;
 }
 
-export async function logInterval(token: string, req: LogIntervalRequest): Promise<FocusInterval> {
-  const res = await fetch(`${BASE}/interval`, {
-    method: 'POST', headers: authHeaders(token), body: JSON.stringify(req),
-  });
+export async function logInterval(req: LogIntervalRequest): Promise<FocusInterval> {
+  const res = await apiFetch(`${PATH}/interval`, 'POST', {...includeCred, body: JSON.stringify(req)})
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to log interval'));
   return data as unknown as FocusInterval;

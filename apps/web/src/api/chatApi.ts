@@ -1,3 +1,5 @@
+import apiFetch from "./apiFetch";
+
 export interface ChatMessage {
   id: string;
   roomId: string;
@@ -6,17 +8,10 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-const BASE = 'http://localhost:8080/api/chat/history';
+const PATH = '/chat'
 
-export async function getChatHistory(token: string, roomId: string): Promise<ChatMessage[]> {
-  const res = await fetch(`${BASE}?roomId=${encodeURIComponent(roomId)}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
+export async function getChatHistory(roomId: string): Promise<ChatMessage[]> {
+  const res = await apiFetch(`${PATH}/history?roomId=${encodeURIComponent(roomId)}`, 'GET')
   if (!res.ok) throw new Error('Failed to fetch chat history');
   const data = await res.json();
   return (Array.isArray(data) ? data : []) as ChatMessage[];
