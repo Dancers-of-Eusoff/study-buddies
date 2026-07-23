@@ -91,7 +91,7 @@ func main() {
 	// Not Connected to DB
 	sessionRepo := sessions.NewMemoryRepository()
 	sessionService := sessions.NewService(sessionRepo)
-	sessionHandler := sessions.NewHandler(sessionService)
+	sessionHandler := sessions.NewHandler(base, sessionService)
 	sessionHandler.RegisterRoutes(mux)
 
 	// Connected to DB

@@ -27,11 +27,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != http.MethodPost {
-	// 	h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-	// 	return
-	// }
-
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.base.WriteError(w, http.StatusBadRequest, ErrInvalidJSON)
@@ -56,18 +51,12 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &accessCookie)
 
 	h.base.WriteJSON(w, http.StatusCreated, AuthResponse{
-		// Token:    token,
 		Username: user.Username,
 		UserID:   user.ID,
 	})
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != http.MethodPost {
-	// 	h.base.WriteError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-	// 	return
-	// }
-
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.base.WriteError(w, http.StatusBadRequest, ErrInvalidJSON)
@@ -94,7 +83,6 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// http.SetCookie(w, &refreshCookie)
 
 	h.base.WriteJSON(w, http.StatusOK, AuthResponse{
-		// Token:    accessToken,
 		Username: user.Username,
 		UserID:   user.ID,
 	})

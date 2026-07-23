@@ -17,7 +17,6 @@ func NewHandler(base *internal.Handler, service *Service) *Handler {
 	return &Handler{base: base, service: service}
 }
 
-// assign http to function
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rooms-join", h.base.RequireAuth(h.handleJoinRoom))
 	mux.HandleFunc("GET /api/rooms/{roomID}", h.base.RequireAuth(h.handleRoomByID))
@@ -60,11 +59,6 @@ func (h *Handler) listPublicRooms(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	// if r.Method != http.MethodPost {
-	// 	writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-	// 	return
-	// }
-
 	var req JoinRoomRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.base.WriteError(w, http.StatusBadRequest, errors.New("invalid JSON body"))
@@ -82,11 +76,6 @@ func (h *Handler) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleRoomByID(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
-	// if r.Method != http.MethodGet {
-	// 	writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-	// 	return
-	// }
 
 	roomID := r.PathValue("roomID")
 	if roomID == "" {
@@ -117,13 +106,3 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, err error) {
 		h.base.WriteError(w, http.StatusInternalServerError, err)
 	}
 }
-
-// func writeJSON(w http.ResponseWriter, status int, value any) {
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(status)
-// 	_ = json.NewEncoder(w).Encode(value)
-// }
-
-// func writeJSONError(w http.ResponseWriter, status int, message string) {
-// 	writeJSON(w, status, map[string]string{"error": message})
-// }

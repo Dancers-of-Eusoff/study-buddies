@@ -3,30 +3,29 @@ package sessions
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal"
 )
 
 type Handler struct {
+	base *internal.Handler
 	service *Service
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(base *internal.Handler, service *Service) *Handler {
 	return &Handler{
+		base: base,
 		service: service,
 	}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/sessions/start", h.handleStart)
-	mux.HandleFunc("POST /api/sessions/end", h.handleEnd)
-	mux.HandleFunc("POST /api/sessions/interval", h.handleLogInterval)
+	mux.HandleFunc("POST /api/sessions/start", h.base.RequireAuth(h.handleStart))
+	mux.HandleFunc("POST /api/sessions/end", h.base.RequireAuth(h.handleEnd))
+	mux.HandleFunc("POST /api/sessions/interval", h.base.RequireAuth(h.handleLogInterval))
 }
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != http.MethodPost {
-	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	// 	return
-	// }
-
 	var req StartSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
@@ -39,17 +38,10 @@ func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(session)
+	h.base.WriteJSON(w, http.StatusCreated, session)
 }
 
 func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != http.MethodPost {
-	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	// 	return
-	// }
-
 	var req EndSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
@@ -70,17 +62,10 @@ func (h *Handler) handleEnd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(session)
+	h.base.WriteJSON(w, http.StatusOK, session)
 }
 
 func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
-	// if r.Method != http.MethodPost {
-	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	// 	return
-	// }
-
 	var req LogIntervalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
@@ -101,7 +86,5 @@ func (h *Handler) handleLogInterval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(interval)
+	h.base.WriteJSON(w, http.StatusOK, interval)
 }
