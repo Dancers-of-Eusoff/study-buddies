@@ -5,7 +5,6 @@ export interface User {
 }
 
 export interface AuthResponse {
-  token: string;    // remove, only leave username and userId
   username: string;
   userId: string;
 }
