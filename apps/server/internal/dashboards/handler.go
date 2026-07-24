@@ -17,11 +17,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/dashboard/me", h.Me)
 	mux.HandleFunc("/api/dashboard/submit-meme", h.AddMeme)
 	mux.HandleFunc("/api/dashboard/select-meme", h.SelectMeme)
+	mux.HandleFunc("/api/dashboard/memes", h.GetAllMemes)
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	var req DashboardRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
 		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
 		return
 	}
@@ -34,8 +35,13 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 
 	selectedMemeID, _ := h.service.GetSelectedMemeID(req.UserID)
 
+	memeList := *memes
+	if memeList == nil {
+		memeList = []MemeDTO{}
+	}
+
 	resp := DashboardResponse{
-		Memes:          *memes,
+		Memes:          memeList,
 		SelectedMemeID: selectedMemeID,
 	}
 
@@ -84,4 +90,26 @@ func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetAllMemes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	memes, err := h.service.GetAllMemes()
+	if err != nil {
+		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
+		return
+	}
+
+	memeList := *memes
+	if memeList == nil {
+		memeList = []MemeDTO{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(memeList)
 }

@@ -25,3 +25,7 @@ func (s *Service) SelectMeme(req *SelectMemeDTO) error {
 func (s *Service) GetSelectedMemeID(userId string) (*string, error) {
 	return s.repo.GetSelectedMemeID(userId)
 }
+
+func (s *Service) GetAllMemes() (*[]MemeDTO, error) {
+	return s.repo.GetAllMemes()
+}

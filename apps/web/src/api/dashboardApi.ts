@@ -1,17 +1,19 @@
-import type { DashboardResponse, Meme, MemeDTO } from "../types/dashboard";
+import type {Meme, MemeDTO } from "../types/dashboard";
 
 const BASE = `${import.meta.env.VITE_BASE_URL}/api/dashboard`
 
-export async function getMyDashboard(userId: string | undefined): Promise<DashboardResponse> {
-    const res = await fetch(`${BASE}/me`, {
-        method: 'QUERY',
-        headers: { 'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId: userId })
-    })
-    if (!res.ok)
-        throw new Error('Failed to fetch memes')
-    const memes = await res.json()
-    return { memes: memes } as unknown as DashboardResponse
+export async function getMyDashboard(userId: string) {
+  const res = await fetch(`${BASE}/me`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch dashboard data');
+  }
+
+  return res.json();
 }
 
 export async function addMemeToCloud(uploadedMeme: File) {
@@ -42,12 +44,12 @@ export async function addMemeToPG(meme: MemeDTO): Promise<Meme> {
 }
 
 export async function selectMemePG(payload: { userId: string; memeId: string }) {
-  const res = await fetch('/api/dashboard/select-meme', {
+  const res = await fetch(`${BASE}/select-meme`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  
+
   if (!res.ok) {
     throw new Error('Failed to update selected meme');
   }
@@ -55,7 +57,9 @@ export async function selectMemePG(payload: { userId: string; memeId: string }) 
 }
 
 export async function getAllMemes() {
-  const response = await fetch(`http://${BASE}/api/memes`);
-  if (!response.ok) throw new Error('Failed to fetch all memes');
-  return response.json();
+  const res = await fetch(`${BASE}/memes`);
+  if (!res.ok) {
+    return [];
+  }
+  return res.json();
 }

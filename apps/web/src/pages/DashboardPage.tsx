@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG } from '../api/dashboardApi';
+import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG, getAllMemes } from '../api/dashboardApi';
 import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
@@ -255,31 +255,64 @@ export default function DashboardPage() {
   useEffect(() => {
     const initDashboard = async () => {
       if (!user?.userId) return;
-      
+
       try {
-        const data = await getMyDashboard(user.userId);
-        
-        // Handle both PascalCase (from backend) and camelCase (from local state)
-        const rawMemes = data?.memes; 
-        
-        if (Array.isArray(rawMemes)) {
-          // Map properties to match what the JSX expects
-          const mappedMemes = rawMemes.map((m: any) => ({
+        // Fetch both simultaneously, catching individual errors so one doesn't crash the other
+        const [dashboardData, publicMemesData] = await Promise.all([
+          getMyDashboard(user.userId).catch((err) => {
+            console.error('Error fetching user dashboard:', err);
+            return null;
+          }),
+          getAllMemes().catch((err) => {
+            console.warn('Could not load public memes:', err);
+            return [];
+          }),
+        ]);
+
+        let combinedMemes: any[] = [];
+
+        // 1. Format public memes
+        if (Array.isArray(publicMemesData)) {
+          const mappedPublic = publicMemesData.map((m: any) => ({
             id: m.id || m.ID,
             title: m.title || m.Title,
             videoURL: m.videoURL || m.VideoURL,
             thumbnailURL: m.thumbnailURL || m.ThumbnailURL,
             createdAt: m.createdAt || m.CreatedAt,
           }));
-          setMemes(mappedMemes);
-        } else {
-          setMemes([]);
+          combinedMemes = [...mappedPublic];
         }
-        
-        const selectedId = data?.selectedMemeId;
+
+        // 2. Format personal memes
+        const rawMemes = dashboardData?.memes;
+        if (Array.isArray(rawMemes)) {
+          const mappedPersonal = rawMemes.map((m: any) => ({
+            id: m.id || m.ID,
+            title: m.title || m.Title,
+            videoURL: m.videoURL || m.VideoURL,
+            thumbnailURL: m.thumbnailURL || m.ThumbnailURL,
+            createdAt: m.createdAt || m.CreatedAt,
+          }));
+
+          // Avoid duplicate entries if a meme is in both lists
+          const existingIds = new Set(combinedMemes.map((m) => m.id));
+          const uniquePersonal = mappedPersonal.filter((m) => !existingIds.has(m.id));
+
+          combinedMemes = [...combinedMemes, ...uniquePersonal];
+        }
+
+        // 3. Put selected meme at index 0
+        const selectedId = dashboardData?.selectedMemeId;
         if (selectedId) {
+          combinedMemes.sort((a, b) => {
+            if (a.id === selectedId) return -1;
+            if (b.id === selectedId) return 1;
+            return 0;
+          });
           setSelectedMemeId(selectedId);
         }
+
+        setMemes(combinedMemes);
       } catch (err) {
         console.error('Failed to initialize dashboard:', err);
         setMemes([]);
