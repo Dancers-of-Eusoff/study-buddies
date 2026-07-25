@@ -1,15 +1,25 @@
-import type { DashboardResponse, Meme, MemeDTO } from "../types/dashboard";
+import type { MemesResponse, Meme, MemeDTO } from "../types/dashboard";
 import apiFetch from "./apiFetch";
 
 const PATH: string = '/dashboard';
 const includeCred: RequestInit = { credentials: 'include' }
 
-export async function getMyDashboard(): Promise<DashboardResponse> {
-    const res = await apiFetch(`${PATH}/me`, 'GET', includeCred)
-    if (!res.ok)
-        throw new Error('Failed to fetch dashboard data')
-    const memes = await res.json()
-    return { memes: memes } as unknown as DashboardResponse
+export async function getMemesResponse(): Promise<MemesResponse> {
+    const [selectedMemeId, memes] = await Promise.all([
+    getSelectedMemes().catch((err) => {
+      console.error("No selected meme:", err);
+      return undefined;
+    }),
+    getAllMemes().catch((err) => {
+      console.warn("Could not load memes:", err);
+      return [];
+    }),
+  ]);
+
+  return {
+    memes,
+    selectedMemeId,
+  };
 }
 
 export async function addMemeToCloud(uploadedMeme: File) {

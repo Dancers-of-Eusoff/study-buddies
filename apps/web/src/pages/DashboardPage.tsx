@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG, getAllMemes, getSelectedMemes } from '../api/dashboardApi';
+import { addMemeToCloud, addMemeToPG, selectMemePG, getMemesResponse } from '../api/dashboardApi';
 import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
@@ -257,29 +257,26 @@ export default function DashboardPage() {
       if (!user?.userId) return;
 
       try {
-        const [selectedMemes, MemesData] = await Promise.all([
-          getSelectedMemes().catch((err) => {
+        const [MemesData] = await Promise.all([
+          getMemesResponse().catch((err) => {
             console.error('No selected memes:', err);
             return null;
-          }),
-          getAllMemes().catch((err) => {
-            console.warn('Could not load memes:', err);
-            return [];
-          }),
+          })
         ]);
 
-        const selectedId = selectedMemes;
-        if (selectedId) {
-          console.log(selectedId)
-          MemesData.sort((a, b) => {
-            if (a.id === selectedId) return -1;
-            if (b.id === selectedId) return 1;
-            return 0;
-          })
-          setSelectedMemeId(selectedId);
-        };
-        
-        setMemes(MemesData);
+        if(MemesData) {
+          const selectedId = MemesData?.selectedMemeId;
+          if (selectedId) {
+            console.log(selectedId)
+            MemesData.memes.sort((a, b) => {
+              if (a.id === selectedId) return -1;
+              if (b.id === selectedId) return 1;
+              return 0;
+            })
+            setSelectedMemeId(selectedId);
+          };
+          setMemes(MemesData.memes);
+        }
       } catch (err) {
         console.error('Failed to initialize dashboard:', err);
         setMemes([]);

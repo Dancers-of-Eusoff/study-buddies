@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
 import { startSession, endSession } from '../api/sessionsApi';
 import { getChatHistory, type ChatMessage } from '../api/chatApi';
-import { getMyDashboard, getAllMemes } from '../api/dashboardApi';
+import { getMemesResponse, getAllMemes } from '../api/dashboardApi';
 import { useTimer } from '../hooks/useTimer';
 import styles from "./StudyRoomPage.module.css";
 import btn from '../components/Buttons.module.css';
@@ -332,7 +332,7 @@ export default function StudyRoomPage() {
         }
 
         if (user?.userId) {
-          const userData = await getMyDashboard(user.userId);
+          const userData = await getMemesResponse();
           if (userData) {
             const rawUserMemes = userData.memes;
             if (Array.isArray(rawUserMemes)) {
