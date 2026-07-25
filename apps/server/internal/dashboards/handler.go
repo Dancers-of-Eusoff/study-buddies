@@ -1,8 +1,9 @@
 package dashboards
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
 type Handler struct {
@@ -14,20 +15,21 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/dashboard/me", h.Me)
-	mux.HandleFunc("/api/dashboard/submit-meme", h.AddMeme)
-	mux.HandleFunc("/api/dashboard/select-meme", h.SelectMeme)
-	mux.HandleFunc("/api/dashboard/memes", h.GetAllMemes)
+	mux.HandleFunc("GET /api/dashboard/me", helper.RequireAuth(h.Me))
+	mux.HandleFunc("POST /api/dashboard/submit-meme", helper.RequireAuth(h.AddMeme))
+	mux.HandleFunc("POST /api/dashboard/select-meme", h.SelectMeme)
+	mux.HandleFunc("GET /api/dashboard/memes", h.GetAllMemes)
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	var req DashboardRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	user, ok := helper.UserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unable to get UserContext", http.StatusInternalServerError)
 		return
 	}
 
-	memes, err := h.service.GetMemes(req.UserID)
+	memes, err := h.service.GetMemes(user.UserID)
 	if err != nil {
 		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
 		return
@@ -45,9 +47,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		SelectedMemeID: selectedMemeID,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	helper.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +57,7 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SubmittedMemeDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -68,9 +67,7 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdMeme)
+	helper.WriteJSON(w, http.StatusCreated, createdMeme)
 }
 
 func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
@@ -112,4 +109,43 @@ func (h *Handler) GetAllMemes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(memeList)
+}
+
+func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
+	// Explicitly check for PUT method to support select-meme requests securely
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req SelectMemeDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid Request", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.SelectMeme(&req); err != nil {
+		http.Error(w, "Failed to select meme", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetAllMemes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	memes, err := h.service.GetAllMemes()
+	if err != nil {
+		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
+		return
+	}
+
+	memeList := *memes
+	if memeList == nil {
+		memeList = []MemeDTO{}
+	}
+
+	helper.WriteJSON(w, http.StatusOK, memeList)
 }

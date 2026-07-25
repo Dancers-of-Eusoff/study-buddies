@@ -34,7 +34,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await loginUser(username.trim(), password);
-      login(res.token, { userId: res.userId, username: res.username });
+      login({ userId: res.userId, username: res.username });
       setSuccess(true);
       setTimeout(() => navigate('/lobby'), 800);
     } catch (err: unknown) {

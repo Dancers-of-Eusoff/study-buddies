@@ -1,10 +1,13 @@
 package users
 
 import (
-	"encoding/json"
 	"net/http"
-	"strings"
+	"os"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
+
+var isProd bool = os.Getenv("ENV") == "production"
 
 type Handler struct {
 	service *Service
@@ -15,92 +18,155 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/auth/register", h.handleRegister)
-	mux.HandleFunc("/api/auth/login", h.handleLogin)
-	mux.HandleFunc("/api/auth/me", h.handleMe)
+	mux.HandleFunc("POST /api/auth/register", h.handleRegister)
+	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
+	mux.HandleFunc("POST /api/auth/logout", helper.RequireAuth(h.handleLogout))
+	mux.HandleFunc("GET /api/auth/me", helper.RequireAuth(h.handleMe))
+	mux.HandleFunc("POST /api/auth/refresh", h.handleRefresh)
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
-
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, ErrInvalidJSON)
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
-	user, token, err := h.service.Register(req)
+	user, accessToken, refreshToken, err := h.service.Register(req)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, err)
+		helper.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	h.writeJSON(w, http.StatusCreated, AuthResponse{
-		Token:    token,
-		Username: user.Username,
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: accessToken,
+		MaxAge: 15 * 60,
+		HttpOnly: true,
+		Secure: isProd,
+		SameSite: http.SameSiteLaxMode,
+	}
+	refreshCookie := http.Cookie{
+		Name: "refreshToken",
+		Value: refreshToken,
+		MaxAge: 60 * 60 * 24 * 7,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/api/auth/refresh",
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &accessCookie)
+	http.SetCookie(w, &refreshCookie)
+	helper.WriteJSON(w, http.StatusCreated, AuthResponse{
 		UserID:   user.ID,
+		Username: user.Username,
 	})
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-		return
-	}
-
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, ErrInvalidJSON)
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
-	user, token, err := h.service.Login(req)
+	user, accessToken, refreshToken, err := h.service.Login(req)
 	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, err)
+		helper.WriteError(w, http.StatusUnauthorized, err)
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, AuthResponse{
-		Token:    token,
-		Username: user.Username,
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: accessToken,
+		MaxAge: 15 * 60,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/",
+		SameSite: http.SameSiteLaxMode,
+	}
+	refreshCookie := http.Cookie{
+		Name: "refreshToken",
+		Value: refreshToken,
+		MaxAge: 60 * 60 * 24 * 7,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/api/auth/refresh",
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &accessCookie)
+	http.SetCookie(w, &refreshCookie)
+	helper.WriteJSON(w, http.StatusOK, AuthResponse{
 		UserID:   user.ID,
+		Username: user.Username,
+	})
+}
+
+func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: "",
+		MaxAge: -1,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/",
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	refreshCookie := http.Cookie{
+		Name: "refreshToken",
+		Value: "",
+		MaxAge: -1,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/api/auth/refresh",
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &accessCookie)
+	http.SetCookie(w, &refreshCookie)
+}
+
+func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("refreshToken")
+	if err != nil {
+		helper.WriteError(w, http.StatusUnauthorized, helper.ErrMissingToken)
+		return
+	}
+
+	claims, err := helper.ValidateToken(cookie.Value)
+	if err != nil {
+		helper.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
+		return
+	}
+
+	accessToken, err := h.service.Refresh(claims)
+	accessCookie := http.Cookie{
+		Name: "accessToken",
+		Value: accessToken,
+		MaxAge: 15 * 60,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/",
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &accessCookie)
+	helper.WriteJSON(w, http.StatusOK, AuthResponse{
+		UserID:   claims.UserID,
+		Username: claims.Username,
 	})
 }
 
 func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		h.writeError(w, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+	user, ok := helper.UserFromContext(r.Context())
+	if !ok {
+		helper.WriteError(w, http.StatusUnauthorized, ErrInvalidToken)
 		return
 	}
 
-	authHeader := r.Header.Get("Authorization")
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		h.writeError(w, http.StatusUnauthorized, ErrMissingHeader)
-		return
-	}
-
-	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-	claims, err := h.service.ValidateToken(tokenStr)
-	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, ErrInvalidToken)
-		return
-	}
-
-	h.writeJSON(w, http.StatusOK, map[string]string{
-		"userId":   claims.UserID,
-		"username": claims.Username,
+	helper.WriteJSON(w, http.StatusOK, AuthResponse{
+		UserID:   user.UserID,
+		Username: user.Username,
 	})
-}
-
-func (h *Handler) writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func (h *Handler) writeError(w http.ResponseWriter, status int, err error) {
-	h.writeJSON(w, status, ErrorResponse{Error: err.Error()})
 }

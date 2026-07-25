@@ -1,42 +1,36 @@
-import type {Meme, MemeDTO } from "../types/dashboard";
+import type { DashboardResponse, Meme, MemeDTO } from "../types/dashboard";
+import apiFetch from "./apiFetch";
 
-const BASE = `${import.meta.env.VITE_BASE_URL}/api/dashboard`
+const PATH: string = '/dashboard';
+const includeCred: RequestInit = { credentials: 'include' }
 
-export async function getMyDashboard(userId: string) {
-  const res = await fetch(`${BASE}/me`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch dashboard data');
-  }
-
-  return res.json();
+export async function getMyDashboard(): Promise<DashboardResponse> {
+    const res = await apiFetch(`${PATH}/me`, 'GET', includeCred)
+    if (!res.ok)
+        throw new Error('Failed to fetch dashboard data')
+    const memes = await res.json()
+    return { memes: memes } as unknown as DashboardResponse
 }
 
 export async function addMemeToCloud(uploadedMeme: File) {
     const formData = new FormData()
     formData.append("file", uploadedMeme)
     formData.append("upload_preset", "study_buddies")
-    const response = await fetch(
+    const res = await fetch(
         "https://api.cloudinary.com/v1_1/jlixjhrm/upload",
         {
           method: "post",
           body: formData
         }
       );
-    const meme = await response.json();
+    if (!res.ok)
+        throw new Error('Failed to upload meme to cloud')
+    const meme = await res.json();
     return meme.url;
 }
 
 export async function addMemeToPG(meme: MemeDTO): Promise<Meme> {
-    const res = await fetch(`${BASE}/submit-meme`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(meme)
-    })
+    const res = await apiFetch(`${PATH}/submit-meme`, 'POST', {...includeCred, body: JSON.stringify(meme)})
     if (!res.ok)
         throw new Error('Failed to add new meme')
     const createdMeme = res.json()

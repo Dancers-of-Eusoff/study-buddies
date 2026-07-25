@@ -1,6 +1,8 @@
 import type { AuthResponse, User } from '../types';
+import apiFetch from './apiFetch';
 
-const BASE = `${import.meta.env.VITE_BASE_URL}/api/auth`;
+const PATH: string = '/auth';
+const includeCred: RequestInit = { credentials: 'include' };
 
 async function safeJson(res: Response): Promise<Record<string, string>> {
   const text = await res.text();
@@ -26,11 +28,7 @@ function friendlyError(raw: string, fallback: string): string {
 }
 
 export async function registerUser(username: string, password: string): Promise<AuthResponse> {
-  const res = await fetch(`${BASE}/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
+  const res = await apiFetch(`${PATH}/register`, 'POST', {...includeCred, body: JSON.stringify({username, password})})
   const body = await safeJson(res);
 
   if (!res.ok) throw new Error(friendlyError(body.error ?? '', 'Registration failed, please try again'));
@@ -38,20 +36,14 @@ export async function registerUser(username: string, password: string): Promise<
 }
 
 export async function loginUser(username: string, password: string): Promise<AuthResponse> {
-  const res = await fetch(`${BASE}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
+  const res = await apiFetch(`${PATH}/login`, 'POST', {...includeCred, body: JSON.stringify({username, password})})
   const body = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(body.error ?? '', 'Wrong username or password 🔐'));
   return body as unknown as AuthResponse;
 }
 
-export async function fetchMe(token: string): Promise<User> {
-  const res = await fetch(`${BASE}/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function fetchMe(): Promise<User> {
+  const res = await apiFetch(`${PATH}/me`, 'GET', includeCred)
   const body = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(body.error ?? '', 'Session expired, please log in again'));
   return body as unknown as User;

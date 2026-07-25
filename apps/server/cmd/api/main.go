@@ -9,7 +9,6 @@ import (
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
-	// "github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
@@ -74,11 +73,13 @@ func main() {
 	wsHub := websocket.NewHub()
 	go wsHub.Run()
 
+	// --- Existing Feature Packages ---
 	// --- Chat Service (wired to WebSocket hub) ---
 	chatRepo := chat.NewMemoryRepository()
 	chatService := chat.NewService(chatRepo, wsHub)
+	chatHandler := chat.NewHandler(chatService)
+	chatHandler.RegisterRoutes(mux)
 
-	// --- Existing Feature Packages ---
 	// Not Connected to DB
 	roomRepo := rooms.NewMemoryRepository()
 	roomService := rooms.NewService(roomRepo)
@@ -92,15 +93,15 @@ func main() {
 	sessionHandler.RegisterRoutes(mux)
 
 	// Connected to DB
-	userRepo := users.NewUserRepo(db)
-	userService := users.NewService(userRepo)
-	userHandler := users.NewHandler(userService)
-	userHandler.RegisterRoutes(mux)
-
 	dashboardRepo := dashboards.NewDashboardRepo(db)
 	dashboardService := dashboards.NewService(dashboardRepo)
 	dashboardHandler := dashboards.NewHandler(dashboardService)
 	dashboardHandler.RegisterRoutes(mux)
+	
+	userRepo := users.NewUserRepo(db)
+	userService := users.NewService(userRepo)
+	userHandler := users.NewHandler(userService)
+	userHandler.RegisterRoutes(mux)
 
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
@@ -137,26 +138,6 @@ func main() {
 			}
 		}
 		})
-	})
-
-	// --- Chat history REST endpoint ---
-	mux.HandleFunc("/api/chat/history", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		roomID := r.URL.Query().Get("roomId")
-		if roomID == "" {
-			http.Error(w, "Missing roomId", http.StatusBadRequest)
-			return
-		}
-		msgs, err := chatService.GetHistory(roomID)
-		if err != nil {
-			http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(msgs)
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
