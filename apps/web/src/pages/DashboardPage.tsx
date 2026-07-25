@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG, getAllMemes } from '../api/dashboardApi';
+import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG, getAllMemes, getSelectedMemes } from '../api/dashboardApi';
 import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
@@ -246,7 +246,6 @@ export default function DashboardPage() {
     setSelectedMemeId(memeId);
     
     try {
-      console.log(memeId)
       await selectMemePG({ userId: user.userId, memeId });
     } catch (err) {
       console.error('Failed to save selected meme:', err);
@@ -258,9 +257,9 @@ export default function DashboardPage() {
       if (!user?.userId) return;
 
       try {
-        const [dashboardData, MemesData] = await Promise.all([
-          getMyDashboard().catch((err) => {
-            console.error('Error fetching user dashboard:', err);
+        const [selectedMemes, MemesData] = await Promise.all([
+          getSelectedMemes().catch((err) => {
+            console.error('No selected memes:', err);
             return null;
           }),
           getAllMemes().catch((err) => {
@@ -269,7 +268,7 @@ export default function DashboardPage() {
           }),
         ]);
 
-        const selectedId = dashboardData?.selectedMemeId;
+        const selectedId = selectedMemes;
         if (selectedId) {
           console.log(selectedId)
           MemesData.sort((a, b) => {
@@ -280,7 +279,6 @@ export default function DashboardPage() {
           setSelectedMemeId(selectedId);
         };
         
-
         setMemes(MemesData);
       } catch (err) {
         console.error('Failed to initialize dashboard:', err);

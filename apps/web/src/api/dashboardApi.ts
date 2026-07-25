@@ -41,7 +41,7 @@ export async function selectMemePG(payload: { userId: string; memeId: string }) 
   const res = await apiFetch(`${PATH}/select-meme`, 'POST',
     {headers: { 'Content-Type': 'application/json'},
     body: JSON.stringify(payload)});
-    
+
   if (!res.ok) {
     throw new Error('Failed to update selected meme');
   }
@@ -49,7 +49,15 @@ export async function selectMemePG(payload: { userId: string; memeId: string }) 
 }
 
 export async function getAllMemes() {
-  const res = await apiFetch(`${PATH}/memes`, 'GET');
+  const res = await apiFetch(`${PATH}/memes`, 'GET', includeCred);
+  if (!res.ok) {
+    return [];
+  }
+  return res.json();
+}
+
+export async function getSelectedMemes() {
+  const res = await apiFetch(`${PATH}/selected-memes`, 'GET', includeCred);
   if (!res.ok) {
     return [];
   }
