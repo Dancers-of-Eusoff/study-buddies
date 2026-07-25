@@ -84,16 +84,17 @@ func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAllMemes(w http.ResponseWriter, r *http.Request) {
-	memes, err := h.service.GetAllMemes()
-	if err != nil {
-		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
+	user, ok := helper.UserFromContext(r.Context())
+	if ok == false {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	memeList := *memes
-	if memeList == nil {
-		memeList = []MemeDTO{}
+	memes, err := h.service.GetMemes(user.UserID)
+	if err != nil {
+		http.Error(w, "Unable to get private memes", http.StatusInternalServerError)
+		return
 	}
 
-	helper.WriteJSON(w, http.StatusOK, memeList)
+	helper.WriteJSON(w, http.StatusOK, memes)
 }
