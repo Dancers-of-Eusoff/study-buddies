@@ -259,7 +259,7 @@ export default function DashboardPage() {
       try {
         // Fetch both simultaneously, catching individual errors so one doesn't crash the other
         const [dashboardData, publicMemesData] = await Promise.all([
-          getMyDashboard(user.userId).catch((err) => {
+          getMyDashboard().catch((err) => {
             console.error('Error fetching user dashboard:', err);
             return null;
           }),
