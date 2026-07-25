@@ -246,6 +246,7 @@ export default function DashboardPage() {
     setSelectedMemeId(memeId);
     
     try {
+      console.log(memeId)
       await selectMemePG({ userId: user.userId, memeId });
     } catch (err) {
       console.error('Failed to save selected meme:', err);
@@ -268,8 +269,19 @@ export default function DashboardPage() {
           }),
         ]);
 
-        setMemes(MemesData);
+        const selectedId = dashboardData?.selectedMemeId;
+        if (selectedId) {
+          console.log(selectedId)
+          MemesData.sort((a, b) => {
+            if (a.id === selectedId) return -1;
+            if (b.id === selectedId) return 1;
+            return 0;
+          })
+          setSelectedMemeId(selectedId);
+        };
+        
 
+        setMemes(MemesData);
       } catch (err) {
         console.error('Failed to initialize dashboard:', err);
         setMemes([]);

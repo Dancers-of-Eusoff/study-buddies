@@ -38,10 +38,10 @@ export async function addMemeToPG(meme: MemeDTO): Promise<Meme> {
 }
 
 export async function selectMemePG(payload: { userId: string; memeId: string }) {
-  const res = await apiFetch(`${PATH}/select-meme`, 'PUT',
-    {headers: { 'Content-Type': 'application/json',
-    body: JSON.stringify(payload)}});
-
+  const res = await apiFetch(`${PATH}/select-meme`, 'POST',
+    {headers: { 'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)});
+    
   if (!res.ok) {
     throw new Error('Failed to update selected meme');
   }
@@ -53,7 +53,5 @@ export async function getAllMemes() {
   if (!res.ok) {
     return [];
   }
-  console.log(res)
-  
   return res.json();
 }
