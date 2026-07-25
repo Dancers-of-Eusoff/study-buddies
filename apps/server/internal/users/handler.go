@@ -113,7 +113,18 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	}
 
+	refreshCookie := http.Cookie{
+		Name: "refreshToken",
+		Value: "",
+		MaxAge: -1,
+		HttpOnly: true,
+		Secure: isProd,
+		Path: "/api/auth/refresh",
+		SameSite: http.SameSiteLaxMode,
+	}
+
 	http.SetCookie(w, &accessCookie)
+	http.SetCookie(w, &refreshCookie)
 }
 
 func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {

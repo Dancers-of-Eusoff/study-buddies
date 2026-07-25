@@ -96,7 +96,7 @@ func (s *Service) Login(req LoginRequest) (UserDTO, string, string, error) {
 }
 
 func (s *Service) Refresh(claims *helper.Claims) (string, error) {
-	accessToken, err := helper.GenerateAccessToken(claims.ID, claims.Username)
+	accessToken, err := helper.GenerateAccessToken(claims.UserID, claims.Username)
 	if err != nil {
 		return "", fmt.Errorf("new access token: %w", err)
 	}
