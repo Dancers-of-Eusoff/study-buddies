@@ -56,7 +56,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await registerUser(username.trim(), password);
-      login(res.token, { userId: res.userId, username: res.username });
+      login({ userId: res.userId, username: res.username });
       setSuccess(true);
       setTimeout(() => navigate('/lobby'), 900);
     } catch (err: unknown) {

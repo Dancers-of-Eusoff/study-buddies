@@ -5,46 +5,46 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
 	repo      Repository
-	jwtSecret []byte
 }
 
 func NewService(repo Repository) *Service {
-	return &Service{
-		repo:      repo,
-		jwtSecret: []byte("study-buddies-dev-secret-change-in-prod"),
-	}
+	return &Service{repo: repo}
 }
 
-func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
+func (s *Service) Register(req RegisterRequest) (UserDTO, string, string, error) {
 	req.Username = strings.TrimSpace(req.Username)
 
 	if len(req.Username) < 3 || len(req.Username) > 20 {
-		return UserDTO{}, "", ErrUsernameLength
+		return UserDTO{}, "", "", ErrUsernameLength
 	}
 	if len(req.Password) < 6 {
-		return UserDTO{}, "", ErrPasswordLength
+		return UserDTO{}, "", "", ErrPasswordLength
 	}
 
 	_, err := s.repo.FindByUsername(req.Username)
 	switch {
 	case err == nil:
-		return UserDTO{}, "", ErrUserExists
+		return UserDTO{}, "", "", ErrUserExists
 	case errors.Is(err, sql.ErrNoRows):
+		hash, err := s.hashPassword(req.Password)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("creating user: %w", err)
+		}
 		user := &CreateUserParams{
 			Username: req.Username,
-			Password: s.hashPassword(req.Password),
+			Password: hash,
 		}
 
 		id, err := s.repo.CreateUser(user)
 		if err != nil {
-			return UserDTO{}, "", err
+			return UserDTO{}, "", "", err
 		}
 
 		userDTO := &UserDTO{
@@ -52,69 +52,66 @@ func (s *Service) Register(req RegisterRequest) (UserDTO, string, error) {
 			Username: req.Username,
 		}
 
-		token, err := s.GenerateToken(userDTO)
+		accessToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("access token: %w", err)
+		}
+		refreshToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("refresh token: %w", err)
+		}
 
-		return *userDTO, token, err
+		return *userDTO, accessToken, refreshToken, err
 	default:
-		return UserDTO{}, "", fmt.Errorf("checking existing user: %w", err)
+		return UserDTO{}, "", "", fmt.Errorf("checking existing user: %w", err)
 	}
 
 }
 
-func (s *Service) Login(req LoginRequest) (UserDTO, string, error) {
+func (s *Service) Login(req LoginRequest) (UserDTO, string, string, error) {
 	user, err := s.repo.FindByUsername(req.Username)
 	switch {
 	case err == nil:
-		token, err := s.GenerateToken(user)
-		return *user, token, err
-	case errors.Is(err, sql.ErrNoRows):
-		return UserDTO{}, "", ErrInvalidAuth
-	default:
-		return UserDTO{}, "", fmt.Errorf("unable to login: %w", err)
-	}
-
-}
-
-func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
+		if !s.checkPassword(req.Password, user.PasswordHash){
+			return UserDTO{}, "", "", ErrInvalidAuth
 		}
-		return s.jwtSecret, nil
-	})
+		userDTO := UserDTO{
+			ID: user.ID,
+			Username: user.Username,
+		}
+		accessToken, err := helper.GenerateAccessToken(userDTO.ID, userDTO.Username)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("access token: %w", err)
+		}
+		refreshToken, err := helper.GenerateRefreshToken(userDTO.ID, userDTO.Username)
+		if err != nil {
+			return UserDTO{}, "", "", fmt.Errorf("refresh token: %w", err)
+		}
+		return userDTO, accessToken, refreshToken, err
+	case errors.Is(err, sql.ErrNoRows):
+		return UserDTO{}, "", "", ErrInvalidAuth
+	default:
+		return UserDTO{}, "", "", fmt.Errorf("unable to login: %w", err)
+	}
+}
+
+func (s *Service) Refresh(claims *helper.Claims) (string, error) {
+	accessToken, err := helper.GenerateAccessToken(claims.UserID, claims.Username)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("new access token: %w", err)
 	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, ErrInvalidToken
-	}
-	return claims, nil
+	return accessToken, nil
 }
 
-func (s *Service) GenerateToken(user *UserDTO) (string, error) {
-	claims := &Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   user.ID,
-		},
+func (s *Service) hashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return "", fmt.Errorf("hashing password: %w", err)
 	}
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
-}
-
-func (s *Service) hashPassword(password string) string {
-	salt := "sb_salt_2025_"
-	bytes := []byte(salt + password)
-	for i := range bytes {
-		bytes[i] = bytes[i] ^ 0x5A
-	}
-	return fmt.Sprintf("%x", bytes)
+	return string(hash), nil
 }
 
 func (s *Service) checkPassword(password, hash string) bool {
-	return s.hashPassword(password) == hash
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }

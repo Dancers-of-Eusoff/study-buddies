@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function ChatPanel({ roomId }: Props) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [typedText, setTypedText] = useState('');
   const socketRef = useRef<WebSocket | null>(null);
@@ -18,12 +18,12 @@ export default function ChatPanel({ roomId }: Props) {
 
   // Load history
   useEffect(() => {
-    if (token) {
-      getChatHistory(token, roomId)
+    if (user) {
+      getChatHistory(roomId)
         .then(setMessages)
         .catch(console.error);
     }
-  }, [roomId, token]);
+  }, [roomId, user]);
 
   // WebSocket
   useEffect(() => {

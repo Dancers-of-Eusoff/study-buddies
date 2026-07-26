@@ -9,7 +9,7 @@ import (
 
 type Repository interface {
 	CreateUser(p *CreateUserParams) (string, error)
-	FindByUsername(username string) (*UserDTO, error)
+	FindByUsername(username string) (*User, error)
 }
 
 type MemoryRepository struct {
@@ -38,16 +38,17 @@ func (r *UserRepo) CreateUser(p *CreateUserParams) (string, error) {
 	return pk, nil
 }
 
-func (r *UserRepo) FindByUsername(username string) (*UserDTO, error) {
-	var u UserDTO
-	query := `SELECT id, username FROM users WHERE username = $1`
+func (r *UserRepo) FindByUsername(username string) (*User, error) {
+	var u User
+	query := `SELECT id, username, password FROM users
+			WHERE username = $1`
 
-	err := r.db.QueryRow(query, username).Scan(&u.ID, &u.Username)
+	err := r.db.QueryRow(query, username).Scan(&u.ID, &u.Username, &u.PasswordHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return &UserDTO{}, fmt.Errorf("user not found: %w", err)
+			return &User{}, fmt.Errorf("user not found: %w", err)
 		}
-		return &UserDTO{}, err
+		return &User{}, err
 	}
 	return &u, nil
 }

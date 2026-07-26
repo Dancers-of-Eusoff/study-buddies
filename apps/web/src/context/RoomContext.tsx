@@ -9,18 +9,18 @@ const RoomContext = createContext<RoomDetails | null | undefined>(undefined);
 export function RoomProvider({ children } : { children : ReactNode }) {
     const [ roomDetails, setRoomDetails ] = useState<RoomDetails | null>(null);
     const { roomId } = useParams<{ roomId: string }>();
-    const { token } = useAuth();
+    const { user } = useAuth();
 
     useEffect(() => {
-        if (!token || !roomId)
+        if (!user || !roomId)
             return ;
         const getData = async () => {
-            const data = await getRoomDetails(token, roomId);
+            const data = await getRoomDetails(roomId);
             setRoomDetails(data);
         }
         
         getData();
-    }, [token, roomId]);
+    }, [roomId]);
 
     return (
         <RoomContext value={roomDetails}>{ children }</RoomContext>

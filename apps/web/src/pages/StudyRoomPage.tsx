@@ -99,7 +99,7 @@ interface ChatPanelProps {
 }
 
 function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [typedText, setTypedText] = useState('');
   const socketRef = useRef<WebSocket | null>(null);
@@ -118,11 +118,11 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
   // Load chat history — only fires when token is ready
   useEffect(() => {
-    if (!token || !roomId) return;
-    getChatHistory(token, roomId)
+    if (!user || !roomId) return;
+    getChatHistory(roomId)
       .then(setMessages)
       .catch((err) => console.error('Error loading chat history:', err));
-  }, [roomId, token]);
+  }, [roomId]);
 
   // WebSocket connection
   useEffect(() => {
@@ -233,7 +233,7 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
 export default function StudyRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [roomDetails, setRoomDetails] = useState<RoomDetails | null>(null);
@@ -256,14 +256,14 @@ export default function StudyRoomPage() {
   // const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadRoom = useCallback(async () => {
-    if (!token || !roomId) return;
+    if (!user || !roomId) return;
     try {
-      const data = await getRoomDetails(token, roomId);
+      const data = await getRoomDetails(roomId);
       setRoomDetails(data);
     } catch (e: unknown) {
       setRoomError(e instanceof Error ? e.message : 'Failed to load room');
     } finally { setLoadingRoom(false); }
-  }, [token, roomId]);
+  }, [roomId, user]);
 
   useEffect(() => {
     loadRoom();
@@ -272,10 +272,10 @@ export default function StudyRoomPage() {
   }, [loadRoom]);
 
   async function handleStartSession() {
-    if (!token || !user || !roomId) return;
+    if (!user || !roomId) return;
     setSessionLoading(true); setSessionError('');
     try {
-      const s = await startSession(token, { userId: user.userId, roomId });
+      const s = await startSession({ userId: user.userId, roomId });
       setSession(s);
     } catch (e: unknown) {
       setSessionError(e instanceof Error ? e.message : 'Failed to start session');
@@ -284,8 +284,8 @@ export default function StudyRoomPage() {
 
   async function handleLeave() {
     setLeaving(true);
-    if (session && token) {
-      try { await endSession(token, { sessionId: session.id }); } catch { /* ignore */ }
+    if (session && user) {
+      try { await endSession({ sessionId: session.id }); } catch { /* ignore */ }
     }
     navigate('/lobby');
   }
@@ -441,7 +441,7 @@ export default function StudyRoomPage() {
         <div className={styles.rightCol}>
 
           {/* Chat panel — only mounts when token is ready to guarantee history loads */}
-          {showChat && roomId && token && (
+          {showChat && roomId && user && (
             <div className={styles.panel}>
               <div className={styles.panelHeader}>
                 <span className={styles.panelHeaderEmoji}>💬</span>

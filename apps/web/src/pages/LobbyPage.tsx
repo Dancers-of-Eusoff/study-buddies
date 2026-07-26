@@ -20,7 +20,7 @@ const MODULE_TAG_VARS: Record<string, string> = {
 };
 
 export default function LobbyPage() {
-  const { user, token, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -39,23 +39,23 @@ export default function LobbyPage() {
   const [joinPrivateError, setJoinPrivateError] = useState('');
 
   const loadRooms = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true); setError('');
     try {
-      const data = await listPublicRooms(token, moduleFilter || undefined);
+      const data = await listPublicRooms(moduleFilter || undefined);
       setRooms(data ?? []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load rooms');
     } finally { setLoading(false); }
-  }, [token, moduleFilter]);
+  }, [moduleFilter]);
 
   useEffect(() => { loadRooms(); }, [loadRooms]);
 
   async function handleJoinPublic(room: Room) {
-    if (!token || !user) return;
+    if (!user) return;
     setJoining(room.id);
     try {
-      await joinRoom(token, { userId: user.userId, userName: user.username, roomId: room.id });
+      await joinRoom({ userId: user.userId, userName: user.username, roomId: room.id });
       navigate(`/rooms/${room.id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to join room');
@@ -64,7 +64,7 @@ export default function LobbyPage() {
   }
 
   async function handleCreateRoom() {
-    if (!token || !user) return;
+    if (!user) return;
     if (!createForm.name.trim()) { setCreateError('Room name is required'); return; }
     setCreateLoading(true); setCreateError('');
     const req: CreateRoomRequest = {
@@ -72,7 +72,7 @@ export default function LobbyPage() {
       type: createForm.type, moduleCode: createForm.moduleCode, durationMinutes: createForm.durationMinutes,
     };
     try {
-      const details = await createRoom(token, req);
+      const details = await createRoom(req);
 
       navigate(`/rooms/${details.room.id}`);
     } catch (e: unknown) {
@@ -82,11 +82,11 @@ export default function LobbyPage() {
   }
 
   async function handleJoinPrivate() {
-    if (!token || !user) return;
+    if (!user) return;
     if (!inviteCode.trim()) { setJoinPrivateError('Invite code is required'); return; }
     setJoinPrivateLoading(true); setJoinPrivateError('');
     try {
-      const details = await joinRoom(token, { userId: user.userId, userName: user.username, inviteCode: inviteCode.trim().toUpperCase() });
+      const details = await joinRoom({ userId: user.userId, userName: user.username, inviteCode: inviteCode.trim().toUpperCase() });
       navigate(`/rooms/${details.room.id}`);
     } catch (e: unknown) {
       setJoinPrivateError(e instanceof Error ? e.message : 'Invalid invite code');

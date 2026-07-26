@@ -1,8 +1,9 @@
 package dashboards
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
 type Handler struct {
@@ -14,32 +15,29 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("QUERY /api/dashboard/me", h.Me)
-	mux.HandleFunc("POST /api/dashboard/submit-meme", h.AddMeme)
+	mux.HandleFunc("GET /api/dashboard/me", helper.RequireAuth(h.Me))
+	mux.HandleFunc("POST /api/dashboard/submit-meme", helper.RequireAuth(h.AddMeme))
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	var req DashboardRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	user, ok := helper.UserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unable to get UserContext", http.StatusInternalServerError)
 		return
 	}
 
-	memes, err := h.service.GetMemes(req.UserID)
+	memes, err := h.service.GetMemes(user.UserID)
 	if err != nil {
 		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(memes)
+	helper.WriteJSON(w, http.StatusOK, memes)
 }
 
 func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 	var req SubmittedMemeDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON Request Body", http.StatusBadRequest)
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
 	}
 
@@ -49,7 +47,5 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdMeme)
+	helper.WriteJSON(w, http.StatusCreated, createdMeme)
 }
