@@ -17,9 +17,12 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/dashboard/me", helper.RequireAuth(h.Me))
 	mux.HandleFunc("POST /api/dashboard/submit-meme", helper.RequireAuth(h.AddMeme))
+	mux.HandleFunc("POST /api/dashboard/select-meme", helper.RequireAuth(h.SelectMeme))
+	mux.HandleFunc("GET /api/dashboard/memes", helper.RequireAuth(h.GetAllMemes))
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	var req DashboardRequest
 	user, ok := helper.UserFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Unable to get UserContext", http.StatusInternalServerError)
@@ -32,10 +35,27 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	helper.WriteJSON(w, http.StatusOK, memes)
+	selectedMemeID, _ := h.service.GetSelectedMemeID(req.UserID)
+
+	memeList := *memes
+	if memeList == nil {
+		memeList = []MemeDTO{}
+	}
+
+	resp := DashboardResponse{
+		Memes:          memeList,
+		SelectedMemeID: selectedMemeID,
+	}
+
+	helper.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	var req SubmittedMemeDTO
 	if err := helper.DecodeJSON(w, r, &req); err != nil {
 		return
@@ -48,4 +68,32 @@ func (h *Handler) AddMeme(w http.ResponseWriter, r *http.Request) {
 	}
 
 	helper.WriteJSON(w, http.StatusCreated, createdMeme)
+}
+
+func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
+	var req SelectMemeDTO
+	if err := helper.DecodeJSON(w, r, &req); err != nil {
+		http.Error(w, "Invalid Request", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.SelectMeme(&req); err != nil {
+		http.Error(w, "Failed to select meme", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetAllMemes(w http.ResponseWriter, r *http.Request) {
+	memes, err := h.service.GetAllMemes()
+	if err != nil {
+		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
+		return
+	}
+
+	memeList := *memes
+	if memeList == nil {
+		memeList = []MemeDTO{}
+	}
+
+	helper.WriteJSON(w, http.StatusOK, memeList)
 }

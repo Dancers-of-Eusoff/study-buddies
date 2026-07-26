@@ -30,6 +30,7 @@ function friendlyError(raw: string, fallback: string): string {
 export async function registerUser(username: string, password: string): Promise<AuthResponse> {
   const res = await apiFetch(`${PATH}/register`, 'POST', {...includeCred, body: JSON.stringify({username, password})})
   const body = await safeJson(res);
+
   if (!res.ok) throw new Error(friendlyError(body.error ?? '', 'Registration failed, please try again'));
   return body as unknown as AuthResponse;
 }

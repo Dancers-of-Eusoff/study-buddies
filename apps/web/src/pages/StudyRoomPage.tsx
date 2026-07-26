@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision"
+import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision";
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
 import { startSession, endSession } from '../api/sessionsApi';
 import { getChatHistory, type ChatMessage } from '../api/chatApi';
+import { getMyDashboard, getAllMemes } from '../api/dashboardApi';
 import { useTimer } from '../hooks/useTimer';
 import styles from "./StudyRoomPage.module.css";
 import btn from '../components/Buttons.module.css';
@@ -19,6 +20,17 @@ const FOCUS_STATES: { state: FocusState; label: string; emoji: string; colorVar:
   { state: 'PAUSED',     label: 'Paused',     emoji: '⏸️', colorVar: 'var(--bark)' },
 ];
 
+const DEFAULT_MEMES = [
+  {
+    id: 'default-1',
+    videoURL: 'https://res.cloudinary.com/jlixjhrm/video/upload/v1783512025/gahdyum_a93h6l.webm',
+  },
+  {
+    id: 'default-2',
+    videoURL: 'https://res.cloudinary.com/jlixjhrm/video/upload/v1783512025/gahdyum_a93h6l.webm', // Replace with second default video URL
+  },
+];
+
 // ─── Destress button ────────────────────────────────────────────────────────
 
 function DestressBtn() {
@@ -30,12 +42,59 @@ function DestressBtn() {
 
 // ─── Flashbang popup ────────────────────────────────────────────────────────
 
-function Flashbang({ myFocusState, setMyFocusState }: { myFocusState: FocusState; setMyFocusState: Dispatch<SetStateAction<FocusState>> }) {
-  return myFocusState === 'DISTRACTED' && (
+function Flashbang({
+  myFocusState,
+  setMyFocusState,
+  userMemes,
+  allMemes,
+  selectedMemeId,
+}: {
+  myFocusState: FocusState;
+  setMyFocusState: Dispatch<SetStateAction<FocusState>>;
+  userMemes: { id?: string; videoURL: string }[];
+  allMemes: { id?: string; videoURL: string }[];
+  selectedMemeId: string | null;
+}) {
+  const [activeMemeUrl, setActiveMemeUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (myFocusState === 'DISTRACTED') {
+      let memeUrl = '';
+
+      // 1. If user selected a specific meme, use that meme
+      if (selectedMemeId) {
+        const combined = [...userMemes, ...allMemes];
+        const selectedMeme = combined.find((m) => m.id === selectedMemeId);
+        if (selectedMeme) {
+          memeUrl = selectedMeme.videoURL;
+        }
+      }
+
+      // 2. Default: If no meme is chosen or selected meme wasn't found,
+      // pick randomly from all user-submitted memes + 2 default memes
+      if (!memeUrl) {
+        const pool = [...allMemes, ...userMemes, ...DEFAULT_MEMES];
+        // Deduplicate by videoURL to avoid overweighting duplicates
+        const uniquePool = Array.from(new Set(pool.map((m) => m.videoURL)))
+          .map((url) => pool.find((m) => m.videoURL === url)!);
+
+        if (uniquePool.length > 0) {
+          const randomIndex = Math.floor(Math.random() * uniquePool.length);
+          memeUrl = uniquePool[randomIndex].videoURL;
+        }
+      }
+
+      setActiveMemeUrl(memeUrl);
+    }
+  }, [myFocusState, userMemes, allMemes, selectedMemeId]);
+
+  if (myFocusState !== 'DISTRACTED') return null;
+
+  return (
     <div className={styles.popup}>
       <div className={styles.flashbang}>
         <button className={styles.closeButton} onClick={() => setMyFocusState("FOCUSED")}>Close</button>
-        <video src="https://res.cloudinary.com/jlixjhrm/video/upload/v1783512025/gahdyum_a93h6l.webm" autoPlay className={styles.flashbangVideo} />
+        <video src={activeMemeUrl} autoPlay className={styles.flashbangVideo} />
       </div>
     </div>
   );
@@ -94,7 +153,6 @@ const LookAtMe = memo(({ myFocusState, setMyFocusState }: { myFocusState: FocusS
 
 interface ChatPanelProps {
   roomId: string;
-  // userId -> username map built from room members in parent
   memberNames: Record<string, string>;
 }
 
@@ -106,17 +164,13 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const userId = user?.userId ?? '';
-  // user.username is the correct field — not displayName
   const myUsername = user?.username ?? userId;
 
-  // Resolve a senderId to a human-readable name
   function resolveName(senderId: string): string {
     if (senderId === userId) return myUsername;
-    // memberNames map has displayName from the room member list
     return memberNames[senderId] ?? `user_${senderId.slice(-6)}`;
   }
 
-  // Load chat history — only fires when token is ready
   useEffect(() => {
     if (!user || !roomId) return;
     getChatHistory(roomId)
@@ -124,7 +178,6 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
       .catch((err) => console.error('Error loading chat history:', err));
   }, [roomId]);
 
-  // WebSocket connection
   useEffect(() => {
     if (!userId) return;
     const WS_URL = `ws://${import.meta.env.VITE_BASE_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
@@ -137,12 +190,9 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
       try {
         const frame = JSON.parse(event.data);
         if (frame.type === 'NEW_MESSAGE') {
-          // frame.payload is already a parsed object after JSON.parse(event.data)
           const incoming: ChatMessage = frame.payload as ChatMessage;
           setMessages((prev) => {
-            // Deduplicate by server-assigned message ID
             if (prev.some((m) => m.id === incoming.id)) return prev;
-            // Swap out the matching optimistic placeholder for our own messages
             if (incoming.senderId === userId) {
               const idx = prev.findIndex(
                 (m) => m.id.startsWith('optimistic-') && m.content === incoming.content
@@ -164,7 +214,6 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
     return () => ws.close();
   }, [roomId, userId]);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -181,7 +230,6 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
       payload: { roomId, senderId: userId, content },
     }));
 
-    // Show your own message immediately — swapped for real server message on echo
     setMessages((prev) => [...prev, {
       id: `optimistic-${crypto.randomUUID()}`,
       roomId: roomId!,
@@ -251,9 +299,12 @@ export default function StudyRoomPage() {
   const [leaving, setLeaving] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
+  const [userMemes, setUserMemes] = useState<{ id?: string; videoURL: string }[]>([]);
+  const [allMemes, setAllMemes] = useState<{ id?: string; videoURL: string }[]>([]);
+  const [selectedMemeId, setSelectedMemeId] = useState<string | null>(null);
+
   const sessionActive = session !== null && session.status === 'ACTIVE';
   const { formatted: elapsed, elapsed: elapsedSecs } = useTimer(sessionActive);
-  // const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadRoom = useCallback(async () => {
     if (!user || !roomId) return;
@@ -265,11 +316,45 @@ export default function StudyRoomPage() {
     } finally { setLoadingRoom(false); }
   }, [roomId, user]);
 
+  // Load user personal memes and all database memes
   useEffect(() => {
-    loadRoom();
-    // pollRef.current = setInterval(loadRoom, 10000);
-    // return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [loadRoom]);
+    const fetchMemes = async () => {
+      try {
+        if (typeof getAllMemes === 'function') {
+          const globalData = await getAllMemes();
+          if (Array.isArray(globalData)) {
+            // Map global memes if needed
+            setAllMemes(globalData.map((m: any) => ({
+              id: m.id || m.ID,
+              videoURL: m.videoURL || m.VideoURL,
+            })));
+          }
+        }
+
+        if (user?.userId) {
+          const userData = await getMyDashboard(user.userId);
+          if (userData) {
+            const rawUserMemes = userData.memes;
+            if (Array.isArray(rawUserMemes)) {
+              setUserMemes(rawUserMemes.map((m: any) => ({
+                id: m.id || m.ID,
+                videoURL: m.videoURL || m.VideoURL,
+              })));
+            }
+            
+            const selectedId = userData.selectedMemeId;
+            if (selectedId) {
+              setSelectedMemeId(selectedId);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load memes:', err);
+      }
+    };
+
+    fetchMemes();
+  }, [user]);
 
   async function handleStartSession() {
     if (!user || !roomId) return;
@@ -322,12 +407,10 @@ export default function StudyRoomPage() {
   const room = roomDetails!.room;
   const members = roomDetails!.members ?? [];
 
-  // Build userId -> displayName lookup to pass into ChatPanel
   const memberNames: Record<string, string> = {};
   for (const m of members) {
     memberNames[m.userId] = m.displayName;
   }
-  // const isOwner = room.ownerId === user?.userId;
 
   return (
     <div className={styles.page}>
@@ -545,7 +628,13 @@ export default function StudyRoomPage() {
       )}
 
       {/* Flashbang popup */}
-      <Flashbang myFocusState={myFocusState} setMyFocusState={setMyFocusState} />
+      <Flashbang
+        myFocusState={myFocusState}
+        setMyFocusState={setMyFocusState}
+        userMemes={userMemes}
+        allMemes={allMemes}
+        selectedMemeId={selectedMemeId}
+      />
     </div>
   );
 }

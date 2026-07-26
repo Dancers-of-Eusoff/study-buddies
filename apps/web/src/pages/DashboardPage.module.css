@@ -658,3 +658,11 @@
   border: 2px solid var(--sky);
   background: var(--sky-light);
 }
+
+.glowingMeme {
+  border: 2px solid #a855f7 !important;
+  box-shadow: 0 0 15px 4px rgba(168, 85, 247, 0.6), 
+              0 0 30px 8px rgba(168, 85, 247, 0.3) !important;
+  transform: scale(1.02);
+  transition: all 0.3s ease-in-out;
+}

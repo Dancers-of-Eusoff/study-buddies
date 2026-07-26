@@ -20,3 +20,13 @@ type SubmittedMemeDTO struct {
 type DashboardRequest struct {
 	UserID string `json:"userId"`
 }
+
+type SelectMemeDTO struct {
+	UserID string `json:"userId"`
+	MemeID string `json:"memeId"`
+}
+
+type DashboardResponse struct {
+	Memes          []MemeDTO `json:"memes"`
+	SelectedMemeID *string   `json:"selectedMemeId"`
+}

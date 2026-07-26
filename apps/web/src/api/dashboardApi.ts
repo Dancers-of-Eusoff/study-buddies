@@ -7,7 +7,7 @@ const includeCred: RequestInit = { credentials: 'include' }
 export async function getMyDashboard(): Promise<DashboardResponse> {
     const res = await apiFetch(`${PATH}/me`, 'GET', includeCred)
     if (!res.ok)
-        throw new Error('Failed to fetch memes')
+        throw new Error('Failed to fetch dashboard data')
     const memes = await res.json()
     return { memes: memes } as unknown as DashboardResponse
 }

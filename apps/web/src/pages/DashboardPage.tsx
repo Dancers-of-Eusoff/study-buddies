@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-import { addMemeToCloud, addMemeToPG, getMyDashboard } from '../api/dashboardApi';
+import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG, getAllMemes } from '../api/dashboardApi';
 import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
@@ -47,7 +47,7 @@ const STAT_ROWS = [
 function startOfWeek(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1) - day; // Monday as start of week
+  const diff = (day === 0 ? -6 : 1) - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
@@ -77,7 +77,7 @@ function getRangeLabel(interval: Interval, date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
-// ── Deterministic mock-data generators (swap for real API data later) ────────
+// ── Deterministic mock-data generators ────────────────────────────────────────
 
 function hashString(str: string): number {
   let hash = 0;
@@ -163,12 +163,14 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Interval>('daily');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
+  const [selectedMemeId, setSelectedMemeId] = useState<string | null>(null);
+  const [selectedMeme, setSelectedMeme] = useState<Meme>();
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+
   const [memes, setMemes] = useState<Meme[]>([]);
-  const [selectedMeme, setSelectedMeme] = useState<Meme>()
   const [addMemeOpen, setAddMemeOpen] = useState(false);
   const [memeCaption, setMemeCaption] = useState('');
   const [memeImagePreview, setMemeImagePreview] = useState<string | null>(null);
-  // Upload meme
   const [memeObjectUrl, setMemeObjectUrl] = useState<string>();
   const [uploadedMeme, setUploadedMeme] = useState<File | undefined>();
   const [isAddingMeme, setIsAddingMeme] = useState<boolean>(false);
@@ -207,7 +209,7 @@ export default function DashboardPage() {
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return ;
+    if (!file) return;
     setUploadedMeme(file);
     const url = URL.createObjectURL(file);
     setMemeObjectUrl(url);
@@ -215,25 +217,39 @@ export default function DashboardPage() {
   }
 
   async function handleAddMeme() {
-    if (!uploadedMeme) return ;
-    if (!memeObjectUrl) return ;
-    if (!user) return ;
+    if (!uploadedMeme || !memeObjectUrl || !user) return;
 
-    setIsAddingMeme(true)     // start loading
-    const videoURL = await addMemeToCloud(uploadedMeme);
-    const thumbnailURL = getVideoThumbnail(videoURL);
-    const submitedMeme: MemeDTO = {
-      title: memeCaption,
-      videoURL: videoURL,
-      thumbnailURL: thumbnailURL,
-      uploaderID: user.userId
-    };
-    const newMeme = await addMemeToPG(submitedMeme);
+    setIsAddingMeme(true);
+    try {
+      const videoURL = await addMemeToCloud(uploadedMeme);
+      const thumbnailURL = getVideoThumbnail(videoURL);
+      const submitedMeme: MemeDTO = {
+        title: memeCaption,
+        videoURL: videoURL,
+        thumbnailURL: thumbnailURL,
+        uploaderID: user.userId
+      };
+      const newMeme = await addMemeToPG(submitedMeme);
 
-    setMemes([...memes, newMeme]);
-    URL.revokeObjectURL(memeObjectUrl);
-    setIsAddingMeme(false)    // finish loading
-    closeAddMeme();
+      setMemes((prev) => [...(prev ?? []), newMeme]);
+      URL.revokeObjectURL(memeObjectUrl);
+      closeAddMeme();
+    } catch (err) {
+      console.error('Failed to add meme:', err);
+    } finally {
+      setIsAddingMeme(false);
+    }
+  }
+
+  async function handleSelectMeme(memeId: string) {
+    if (!user) return;
+    setSelectedMemeId(memeId);
+    
+    try {
+      await selectMemePG({ userId: user.userId, memeId });
+    } catch (err) {
+      console.error('Failed to save selected meme:', err);
+    }
   }
 
   useEffect(() => {
@@ -310,7 +326,7 @@ export default function DashboardPage() {
     };
 
     initDashboard();
-  }, [])
+  }, [user]);
 
   return (
     <div className={styles.page}>
@@ -447,8 +463,12 @@ export default function DashboardPage() {
           <section className={styles.card}>
             <div className={styles.cardHeaderRow}>
               <h2 className={styles.cardTitle}>😂 Memes collection</h2>
-              <button onClick={() => setAddMemeOpen(true)} className={`${btn.primary} ${styles.addMemeBtn}`}>
-                ➕ Add meme
+              <button 
+                onClick={() => setIsSelectionMode((prev) => !prev)} 
+                className={`${btn.primary} ${styles.addMemeBtn}`}
+                style={isSelectionMode ? { backgroundColor: 'var(--leaf-deep)', borderColor: 'var(--leaf-deep)' } : undefined}
+              >
+                {isSelectionMode ? '✨ Selection Mode: ON' : '🎯 Select Meme'}
               </button>
             </div>
 
@@ -457,8 +477,19 @@ export default function DashboardPage() {
                 <span className={styles.addMemePlus}>+</span>
                 Add a meme
               </button>
-              {memes?.map((m) => (
-                <div onClick={() => setSelectedMeme(m)} key={m.id} className={styles.memeCard}>
+              
+              {Array.isArray(memes) && memes.map((m) => (
+                <div 
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      handleSelectMeme(m.id);
+                    } else {
+                      setSelectedMeme(m);
+                    }
+                  }} 
+                  key={m.id} 
+                  className={`${styles.memeCard} ${selectedMemeId === m.id ? styles.glowingMeme : ''}`}
+                >
                   <div className={styles.memeVisual}>
                     {m.thumbnailURL ? (
                       <img src={m.thumbnailURL} alt={m.title} className={styles.memeImg} />
@@ -474,7 +505,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Add meme modal (frontend-only; wire up to backend upload later) */}
+      {/* Add meme modal */}
       {addMemeOpen && (
         <div onClick={closeAddMeme} className={styles.modalOverlay}>
           <div onClick={(e) => e.stopPropagation()} className={styles.modalCard}>
@@ -517,18 +548,18 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Selected meme video preview modal */}
       {selectedMeme && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalCard}>
-              <div className={styles.modalHeader}>
-                <span className={styles.modalHeaderTitle}>{selectedMeme.title}</span>
-                <button className={styles.modalCloseBtn} onClick={() => setSelectedMeme(undefined)}>✕</button>
-              </div>
-              <video src={selectedMeme.videoURL} autoPlay />
+        <div onClick={() => setSelectedMeme(undefined)} className={styles.modalOverlay}>
+          <div onClick={(e) => e.stopPropagation()} className={styles.modalCard}>
+            <div className={styles.modalHeader}>
+              <span className={styles.modalHeaderTitle}>{selectedMeme.title}</span>
+              <button className={styles.modalCloseBtn} onClick={() => setSelectedMeme(undefined)}>✕</button>
             </div>
+            <video src={selectedMeme.videoURL} autoPlay controls />
+          </div>
         </div>
-        )
-      }
+      )}
     </div>
   );
 }
