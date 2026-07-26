@@ -238,9 +238,76 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const initDashboard = async () => {
-      const data = await getMyDashboard(user?.userId)
-      setMemes(data.memes)
-    }
+      if (!user?.userId) return;
+
+      try {
+        // Fetch both simultaneously, catching individual errors so one doesn't crash the other
+        const [dashboardData, publicMemesData] = await Promise.all([
+          getMyDashboard().catch((err) => {
+            console.error('Error fetching user dashboard:', err);
+            return null;
+          }),
+          getAllMemes().catch((err) => {
+            console.warn('Could not load public memes:', err);
+            return [];
+          }),
+        ]);
+
+        // const [memeData, userData, summmaryData] = await Promise.all(
+        //   getMemes();
+        //   getUserData();
+        //   getSummary();
+        // )
+
+        let combinedMemes: any[] = [];
+
+        // 1. Format public memes
+        if (Array.isArray(publicMemesData)) {
+          const mappedPublic = publicMemesData.map((m: any) => ({
+            id: m.id || m.ID,
+            title: m.title || m.Title,
+            videoURL: m.videoURL || m.VideoURL,
+            thumbnailURL: m.thumbnailURL || m.ThumbnailURL,
+            createdAt: m.createdAt || m.CreatedAt,
+          }));
+          combinedMemes = [...mappedPublic];
+        }
+
+        // 2. Format personal memes
+        const rawMemes = dashboardData?.memes;
+        if (Array.isArray(rawMemes)) {
+          const mappedPersonal = rawMemes.map((m: any) => ({
+            id: m.id || m.ID,
+            title: m.title || m.Title,
+            videoURL: m.videoURL || m.VideoURL,
+            thumbnailURL: m.thumbnailURL || m.ThumbnailURL,
+            createdAt: m.createdAt || m.CreatedAt,
+          }));
+
+          // Avoid duplicate entries if a meme is in both lists
+          const existingIds = new Set(combinedMemes.map((m) => m.id));
+          const uniquePersonal = mappedPersonal.filter((m) => !existingIds.has(m.id));
+
+          combinedMemes = [...combinedMemes, ...uniquePersonal];
+        }
+
+        // 3. Put selected meme at index 0
+        const selectedId = dashboardData?.selectedMemeId;
+        if (selectedId) {
+          combinedMemes.sort((a, b) => {
+            if (a.id === selectedId) return -1;
+            if (b.id === selectedId) return 1;
+            return 0;
+          });
+          setSelectedMemeId(selectedId);
+        }
+
+        setMemes(combinedMemes);
+      } catch (err) {
+        console.error('Failed to initialize dashboard:', err);
+        setMemes([]);
+      }
+    };
 
     initDashboard();
   }, [])
