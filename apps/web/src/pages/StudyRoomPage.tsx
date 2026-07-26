@@ -332,7 +332,7 @@ export default function StudyRoomPage() {
         }
 
         if (user?.userId) {
-          const userData = await getMyDashboard(user.userId);
+          const userData = await getMyDashboard();
           if (userData) {
             const rawUserMemes = userData.memes;
             if (Array.isArray(rawUserMemes)) {

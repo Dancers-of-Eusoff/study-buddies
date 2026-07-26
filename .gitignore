@@ -102,6 +102,7 @@ htmlcov/
 # =========================
 generated/
 uploads/
+test-results/
 .vercel
 .env*
 screenshots/

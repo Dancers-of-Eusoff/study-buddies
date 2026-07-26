@@ -15,13 +15,14 @@ export default function FormField({ label, icon, error, type, style: _style, ...
   return (
     <div className={styles.field}>
 
-      <label className={styles.label}>
+      <label htmlFor={label} className={styles.label}>
         <span>{icon}</span> {label}
       </label>
 
       <div className={styles.inputWrap}>
         <input
           {...rest}
+          id={label}
           type={isPassword ? (showPw ? 'text' : 'password') : type}
           className={`${styles.input} ${error ? styles.inputError : ''}`}
           style={isPassword ? { paddingRight: 44 } : undefined}
