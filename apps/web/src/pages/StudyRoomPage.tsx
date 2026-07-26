@@ -316,6 +316,10 @@ export default function StudyRoomPage() {
     } finally { setLoadingRoom(false); }
   }, [roomId, user]);
 
+  useEffect(() => {
+    loadRoom();
+  }, [loadRoom]);
+
   // Load user personal memes and all database memes
   useEffect(() => {
     const fetchMemes = async () => {
