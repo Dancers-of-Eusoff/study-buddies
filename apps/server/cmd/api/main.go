@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/websocket"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 
 	_ "github.com/lib/pq"
 )
@@ -55,6 +57,17 @@ func NewDB(connStr string) (*sql.DB, error) {
 	return db, nil
 }
 
+func NewRedisClient(addr, password string) (*redis.Client, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+	})
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
 func main() {
 	// DB connection
 	if err := godotenv.Load(".env.local"); err != nil {
@@ -66,6 +79,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	redisClient, err := NewRedisClient(os.Getenv("REDIS_ADDR"), os.Getenv("REDIS_PASSWORD"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer redisClient.Close()
 
 	mux := http.NewServeMux()
 
@@ -86,8 +105,8 @@ func main() {
 	roomHandler := rooms.NewHandler(roomService)
 	roomHandler.RegisterRoutes(mux)
 
-	// Not Connected to DB
-	sessionRepo := sessions.NewMemoryRepository()
+	// Connected to Redis
+	sessionRepo := sessions.NewRedisRepository(redisClient)
 	sessionService := sessions.NewService(sessionRepo)
 	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
