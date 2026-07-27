@@ -11,6 +11,7 @@ type Repository interface {
 	UpdateSession(session StudySession) error
 	LogFocusInterval(interval FocusInterval) error
 	ListIntervalsBySessionID(sessionID string) ([]FocusInterval, error)
+	ListSessionsByUserID(userID string) ([]StudySession, error)
 }
 
 type MemoryRepository struct {
@@ -86,4 +87,18 @@ func (r *MemoryRepository) ListIntervalsBySessionID(sessionID string) ([]FocusIn
 	}
 
 	return interval, nil
+}
+
+func (r *MemoryRepository) ListSessionsByUserID(userID string) ([]StudySession, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var userSessions []StudySession
+	for _, session := range r.sessions {
+		if session.UserID == userID {
+			userSessions = append(userSessions, session)
+		}
+	}
+
+	return userSessions, nil
 }

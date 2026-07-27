@@ -74,7 +74,6 @@ func (s *Service) EndSession(req EndSessionRequest) (StudySession, error) {
 }
 
 func (s *Service) LogInterval(req LogIntervalRequest) (FocusInterval, error) {
-	// can adjust according to CV
 	if req.State != "FOCUSED" && req.State != "DISTRACTED" && req.State != "UNCERTAIN" && req.State != "NO_FACE" {
 		return FocusInterval{}, ErrInvalidState
 	}
@@ -84,7 +83,6 @@ func (s *Service) LogInterval(req LogIntervalRequest) (FocusInterval, error) {
 		return FocusInterval{}, err
 	}
 
-	// 3. Assembly: Build the FocusInterval struct
 	interval := FocusInterval{
 		ID:              intervalID,
 		SessionID:       req.SessionID,
@@ -98,4 +96,22 @@ func (s *Service) LogInterval(req LogIntervalRequest) (FocusInterval, error) {
 	}
 
 	return interval, nil
+}
+
+func (s *Service) GetUserSessions(userID string) ([]SessionDetailsResponse, error) {
+	sessions, err := s.repo.ListSessionsByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []SessionDetailsResponse
+	for _, sess := range sessions {
+		intervals, _ := s.repo.ListIntervalsBySessionID(sess.ID)
+		results = append(results, SessionDetailsResponse{
+			Session:   sess,
+			Intervals: intervals,
+		})
+	}
+
+	return results, nil
 }

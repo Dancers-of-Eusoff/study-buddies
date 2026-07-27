@@ -1,16 +1,21 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision";
+import {
+  AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
-import { startSession, endSession } from '../api/sessionsApi';
+import { startSession, endSession, logInterval } from '../api/sessionsApi';
 import { getChatHistory, type ChatMessage } from '../api/chatApi';
 import { getMemesResponse, getAllMemes } from '../api/dashboardApi';
 import { useTimer } from '../hooks/useTimer';
 import styles from "./StudyRoomPage.module.css";
 import btn from '../components/Buttons.module.css';
-import type { RoomDetails, Session, FocusState } from '../types';
+import type { RoomDetails } from '../types';
+import type { Session, FocusState } from '../types/session';
 
 const FOCUS_STATES: { state: FocusState; label: string; emoji: string; colorVar: string }[] = [
   { state: 'FOCUSED',    label: 'Focused',    emoji: '🟢', colorVar: 'var(--leaf-deep)' },
@@ -61,7 +66,6 @@ function Flashbang({
     if (myFocusState === 'DISTRACTED') {
       let memeUrl = '';
 
-      // 1. If user selected a specific meme, use that meme
       if (selectedMemeId) {
         const combined = [...userMemes, ...allMemes];
         const selectedMeme = combined.find((m) => m.id === selectedMemeId);
@@ -70,8 +74,6 @@ function Flashbang({
         }
       }
 
-      // 2. Default: If no meme is chosen or selected meme wasn't found,
-      // pick randomly from all user-submitted memes + 2 default memes
       if (!memeUrl) {
         const pool = [...allMemes, ...userMemes, ...DEFAULT_MEMES];
         // Deduplicate by videoURL to avoid overweighting duplicates
@@ -303,9 +305,42 @@ export default function StudyRoomPage() {
   const [allMemes, setAllMemes] = useState<{ id?: string; videoURL: string }[]>([]);
   const [selectedMemeId, setSelectedMemeId] = useState<string | null>(null);
 
-  const sessionActive = session !== null && session.status === 'ACTIVE';
+  const [liveFocusLog, setLiveFocusLog] = useState<{ minute: number; state: FocusState }[]>([]);
+
+  const sessionActive = session !== null && session.isActive;
   const { formatted: elapsed, elapsed: elapsedSecs } = useTimer(sessionActive);
 
+  // Reset the live log whenever a fresh session starts
+  useEffect(() => {
+    if (session?.id) setLiveFocusLog([]);
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (!sessionActive || !session?.id) return;
+
+    const timer = setInterval(() => {
+      logInterval({
+        sessionId: session.id,
+        state: myFocusState,
+      }).catch((err) => console.error('Failed to log interval:', err));
+
+      setLiveFocusLog((prev) => [...prev, { minute: prev.length + 1, state: myFocusState }]);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(timer);
+  }, [sessionActive, session?.id, myFocusState]);
+
+  // Cumulative Focused vs Distracted minutes for the live in-session chart
+  const liveChartData = useMemo(() => {
+    let focusedMin = 0;
+    let distractedMin = 0;
+    return liveFocusLog.map((entry) => {
+      if (entry.state === 'FOCUSED') focusedMin += 1;
+      else distractedMin += 1;
+      return { minute: entry.minute, Focused: focusedMin, Distracted: distractedMin };
+    });
+  }, [liveFocusLog]);
+  
   const loadRoom = useCallback(async () => {
     if (!user || !roomId) return;
     try {
@@ -316,6 +351,10 @@ export default function StudyRoomPage() {
     } finally { setLoadingRoom(false); }
   }, [roomId, user]);
 
+  useEffect(() => {
+    loadRoom();
+  }, [loadRoom]);
+
   // Load user personal memes and all database memes
   useEffect(() => {
     const fetchMemes = async () => {
@@ -323,7 +362,7 @@ export default function StudyRoomPage() {
         if (typeof getAllMemes === 'function') {
           const globalData = await getAllMemes();
           if (Array.isArray(globalData)) {
-            // Map global memes if needed
+            // Map global memes if needed 
             setAllMemes(globalData.map((m: any) => ({
               id: m.id || m.ID,
               videoURL: m.videoURL || m.VideoURL,
@@ -505,6 +544,26 @@ export default function StudyRoomPage() {
                       >{f.emoji} {f.label}</button>
                     ))}
                   </div>
+                </div>
+                {/* Live focus chart */}
+                <div style={{ background: 'var(--paper, #fff)', borderRadius: 12, padding: '12px 8px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bark)', marginBottom: 6, paddingLeft: 8 }}>
+                    Live session focus
+                  </div>
+                  {liveChartData.length === 0 ? (
+                    <p className={styles.panelEmpty}>Your chart will appear after the first minute is logged.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={160}>
+                      <AreaChart data={liveChartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                        <CartesianGrid stroke="var(--tan-deep)" strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="minute" tick={{ fontSize: 11, fill: 'var(--bark)' }} axisLine={false} tickLine={false} label={{ value: 'min', position: 'insideBottomRight', offset: -2, fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 11, fill: 'var(--bark)' }} axisLine={false} tickLine={false} width={30} />
+                        <Tooltip formatter={(value: number) => `${value} min`} />
+                        <Area type="monotone" dataKey="Focused" stackId="1" stroke="var(--leaf-deep)" fill="var(--leaf)" fillOpacity={0.6} />
+                        <Area type="monotone" dataKey="Distracted" stackId="1" stroke="var(--coral-deep)" fill="var(--coral)" fillOpacity={0.6} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
                 {/* Stats */}
                 <div className={styles.statsRow}>

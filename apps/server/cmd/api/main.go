@@ -19,8 +19,8 @@ import (
 )
 
 var allowedOrigins = map[string]bool{
-	"http://localhost:5173": true,
-    "https://study-buddies-red.vercel.app":	true, // vercel production
+	"http://localhost:5173":                true,
+	"https://study-buddies-red.vercel.app": true, // vercel production
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -30,9 +30,9 @@ func corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		origin := r.Header.Get("Origin")
-        if allowedOrigins[origin] {
-            w.Header().Set("Access-Control-Allow-Origin", origin)
-        }
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, QUERY")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -57,11 +57,11 @@ func NewDB(connStr string) (*sql.DB, error) {
 
 func main() {
 	// DB connection
-    if err := godotenv.Load(".env.local"); err != nil {
-        log.Println("no .env.local file found") // non-fatal, prod uses real env vars
-    }
+	if err := godotenv.Load(".env.local"); err != nil {
+		log.Println("no .env.local file found") // non-fatal, prod uses real env vars
+	}
 
-    connStr := os.Getenv("DATABASE_URL")
+	connStr := os.Getenv("DATABASE_URL")
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -97,7 +97,7 @@ func main() {
 	dashboardService := dashboards.NewService(dashboardRepo)
 	dashboardHandler := dashboards.NewHandler(dashboardService)
 	dashboardHandler.RegisterRoutes(mux)
-	
+
 	userRepo := users.NewUserRepo(db)
 	userService := users.NewService(userRepo)
 	userHandler := users.NewHandler(userService)
@@ -119,24 +119,24 @@ func main() {
 			return
 		}
 		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
-		log.Printf("📨 Event [%s] roomId [%s] from user [%s]", event.Type, event.RoomID, client.UserID)
+			log.Printf("📨 Event [%s] roomId [%s] from user [%s]", event.Type, event.RoomID, client.UserID)
 
-		switch event.Type {
+			switch event.Type {
 
-		case "JOIN_ROOM":
-			wsHub.SubscribeToRoom(event.RoomID, client)
-			log.Printf("✅ User [%s] joined room [%s]", client.UserID, event.RoomID)
+			case "JOIN_ROOM":
+				wsHub.SubscribeToRoom(event.RoomID, client)
+				log.Printf("✅ User [%s] joined room [%s]", client.UserID, event.RoomID)
 
-		case "SEND_MESSAGE":
-			var payload chat.SendMessagePayload
-			if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			log.Printf("❌ SEND_MESSAGE parse error: %v", err)
-			return
+			case "SEND_MESSAGE":
+				var payload chat.SendMessagePayload
+				if err := json.Unmarshal(event.Payload, &payload); err != nil {
+					log.Printf("❌ SEND_MESSAGE parse error: %v", err)
+					return
+				}
+				if _, err := chatService.ProcessSentMessage(payload); err != nil {
+					log.Printf("❌ ProcessSentMessage error: %v", err)
+				}
 			}
-			if _, err := chatService.ProcessSentMessage(payload); err != nil {
-			log.Printf("❌ ProcessSentMessage error: %v", err)
-			}
-		}
 		})
 	})
 
