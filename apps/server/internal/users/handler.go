@@ -7,7 +7,7 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
-var isProd bool = os.Getenv("ENV") == "production"
+var isProd bool = os.Getenv("APP_ENV") == "production"
 
 type Handler struct {
 	service *Service
