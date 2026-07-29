@@ -57,6 +57,7 @@ func NewDB(connStr string) (*sql.DB, error) {
 
 func main() {
 	// DB connection
+	log.Printf("Environment: %v", os.Getenv("ENV"))
     if err := godotenv.Load(".env.local"); err != nil {
         log.Println("no .env.local file found") // non-fatal, prod uses real env vars
     }
