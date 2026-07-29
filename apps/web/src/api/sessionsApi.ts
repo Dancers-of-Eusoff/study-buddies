@@ -47,3 +47,7 @@ export async function getUserSessions(): Promise<SessionDetailsResponse[]> {
   }
   return res.json();
 }
+
+export async function heartbeat(sessionId: string): Promise<void> {
+  await apiFetch(`${PATH}/${sessionId}/heartbeat`, 'POST', includeCred);
+}

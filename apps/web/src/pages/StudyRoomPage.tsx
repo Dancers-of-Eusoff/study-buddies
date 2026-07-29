@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
-import { startSession, endSession, logInterval } from '../api/sessionsApi';
+import { startSession, endSession, logInterval, heartbeat } from '../api/sessionsApi';
 import { getChatHistory, type ChatMessage } from '../api/chatApi';
 import { getMemesResponse, getAllMemes } from '../api/dashboardApi';
 import { useTimer } from '../hooks/useTimer';
@@ -142,6 +142,8 @@ const LookAtMe = memo(({ onSample, paused }: { onSample: (f: FocusState) => void
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | undefined;
+    let stream: MediaStream | undefined;
+    let cancelled = false;
 
     const runDetection = () => {
       if (!objectDetectorRef.current || !videoRef.current || pausedRef.current) return;
@@ -169,19 +171,42 @@ const LookAtMe = memo(({ onSample, paused }: { onSample: (f: FocusState) => void
     };
 
     const startCamera = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        intervalId = setInterval(runDetection, DETECTION_INTERVAL_MS);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (err) {
+        console.error("Failed to access camera:", err);
+        return;
       }
+
+      // The effect was already cleaned up (e.g. React's dev-mode double
+      // mount/unmount) before permission resolved — release the camera
+      // immediately instead of attaching it to a dead component.
+      if (cancelled || !videoRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      videoRef.current.srcObject = stream;
+      try {
+        await videoRef.current.play();
+      } catch (err) {
+        // Expected if the component unmounts/remounts while play() is still
+        // pending — not a real failure.
+        if ((err as DOMException).name !== "AbortError") console.error(err);
+        return;
+      }
+
+      if (cancelled) return;
+      intervalId = setInterval(runDetection, DETECTION_INTERVAL_MS);
     };
 
     init();
     startCamera();
 
     return () => {
+      cancelled = true;
       if (intervalId) clearInterval(intervalId);
+      stream?.getTracks().forEach((track) => track.stop());
     };
   }, [onSample]);
 
@@ -387,6 +412,21 @@ export default function StudyRoomPage() {
     }, 60000); // 60 seconds
 
     return () => clearInterval(timer);
+  }, [sessionActive, session?.id]);
+
+  // Tells the server this session is still alive — the backend force-ends
+  // sessions whose heartbeat goes silent (crashed tab, dead laptop, dropped
+  // network). Independent of focus logging: even a PAUSED/DISTRACTED user
+  // still needs to keep the heartbeat going or the sweep wrongly concludes
+  // they've left.
+  useEffect(() => {
+    if (!sessionActive || !session?.id) return;
+
+    const beat = setInterval(() => {
+      heartbeat(session.id).catch(() => { /* missed beat is fine, next tick retries */ });
+    }, 20000); // 20 seconds — well under the backend's 45s stale timeout
+
+    return () => clearInterval(beat);
   }, [sessionActive, session?.id]);
 
   // Focused vs distracted minute breakdown for the in-session summary

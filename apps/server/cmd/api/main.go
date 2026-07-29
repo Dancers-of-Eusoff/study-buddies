@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
@@ -15,7 +16,6 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/websocket"
 	"github.com/joho/godotenv"
-	"github.com/redis/go-redis/v9"
 
 	_ "github.com/lib/pq"
 )
@@ -24,6 +24,13 @@ var allowedOrigins = map[string]bool{
 	"http://localhost:5173":                true,
 	"https://study-buddies-red.vercel.app": true, // vercel production
 }
+
+// How often we sweep for sessions whose heartbeat has gone silent, and how
+// long a session may go without a heartbeat before it's considered dead.
+const (
+	sessionSweepInterval = 30 * time.Second
+	sessionStaleTimeout  = 45 * time.Second
+)
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,17 +64,6 @@ func NewDB(connStr string) (*sql.DB, error) {
 	return db, nil
 }
 
-func NewRedisClient(addr, password string) (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-	})
-	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
 func main() {
 	// DB connection
 	if err := godotenv.Load(".env.local"); err != nil {
@@ -79,12 +75,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	redisClient, err := NewRedisClient(os.Getenv("REDIS_ADDR"), os.Getenv("REDIS_PASSWORD"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer redisClient.Close()
 
 	mux := http.NewServeMux()
 
@@ -105,11 +95,19 @@ func main() {
 	roomHandler := rooms.NewHandler(roomService)
 	roomHandler.RegisterRoutes(mux)
 
-	// Connected to Redis
-	sessionRepo := sessions.NewRedisRepository(redisClient)
-	sessionService := sessions.NewService(sessionRepo)
+	// Live session state stays in-memory (heartbeat + focus intervals);
+	// finished sessions are summarized to Postgres via summaryRepo below.
+	sessionRepo := sessions.NewMemoryRepository()
+	summaryRepo := sessions.NewPostgresSummaryRepository(db)
+	sessionService := sessions.NewService(sessionRepo, summaryRepo)
 	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
+
+	// Force-ends sessions whose heartbeat has gone silent (crashed tab,
+	// dead laptop, dropped network) so they still get summarized.
+	sweepCtx, cancelSweep := context.WithCancel(context.Background())
+	defer cancelSweep()
+	go sessionService.StartSweeper(sweepCtx, sessionSweepInterval, sessionStaleTimeout)
 
 	// Connected to DB
 	dashboardRepo := dashboards.NewDashboardRepo(db)
@@ -125,7 +123,6 @@ func main() {
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
-		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
 		if r.Method == http.MethodOptions {
 			origin := r.Header.Get("Origin")
 			if allowedOrigins[origin] {

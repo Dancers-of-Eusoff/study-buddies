@@ -1,11 +1,8 @@
 package sessions
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-
-	"github.com/redis/go-redis/v9"
+	"sync"
+	"time"
 )
 
 type Repository interface {
@@ -15,149 +12,138 @@ type Repository interface {
 	LogFocusInterval(interval FocusInterval) error
 	ListIntervalsBySessionID(sessionID string) ([]FocusInterval, error)
 	ListSessionsByUserID(userID string) ([]StudySession, error)
+
+	Heartbeat(sessionID string) error
+	ListStaleSessionIDs(timeout time.Duration) ([]string, error)
 }
 
-type RedisRepository struct {
-	client *redis.Client
-	ctx    context.Context
+type MemoryRepository struct {
+	mu         sync.RWMutex
+	sessions   map[string]StudySession
+	intervals  map[string][]FocusInterval
+	heartbeats map[string]time.Time
 }
 
-func NewRedisRepository(client *redis.Client) *RedisRepository {
-	return &RedisRepository{
-		client: client,
-		ctx:    context.Background(),
+func NewMemoryRepository() *MemoryRepository {
+	return &MemoryRepository{
+		sessions:   make(map[string]StudySession),
+		intervals:  make(map[string][]FocusInterval),
+		heartbeats: make(map[string]time.Time),
 	}
 }
 
-func sessionKey(id string) string {
-	return "session:" + id
+func (r *MemoryRepository) CreateSession(session StudySession) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.sessions[session.ID] = session
+	r.intervals[session.ID] = make([]FocusInterval, 0)
+	r.heartbeats[session.ID] = time.Now()
+
+	return nil
 }
 
-func intervalsKey(sessionID string) string {
-	return "session:intervals:" + sessionID
-}
+func (r *MemoryRepository) FindSessionByID(id string) (StudySession, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-func userSessionsKey(userID string) string {
-	return "user:sessions:" + userID
-}
-
-func (r *RedisRepository) CreateSession(session StudySession) error {
-	data, err := json.Marshal(session)
-	if err != nil {
-		return err
-	}
-
-	pipe := r.client.TxPipeline()
-	pipe.Set(r.ctx, sessionKey(session.ID), data, 0)
-	pipe.SAdd(r.ctx, userSessionsKey(session.UserID), session.ID)
-	_, err = pipe.Exec(r.ctx)
-	return err
-}
-
-func (r *RedisRepository) FindSessionByID(id string) (StudySession, error) {
-	data, err := r.client.Get(r.ctx, sessionKey(id)).Bytes()
-	if errors.Is(err, redis.Nil) {
+	session, ok := r.sessions[id]
+	if !ok {
 		return StudySession{}, ErrSessionNotFound
 	}
-	if err != nil {
-		return StudySession{}, err
-	}
 
-	var session StudySession
-	if err := json.Unmarshal(data, &session); err != nil {
-		return StudySession{}, err
-	}
 	return session, nil
 }
 
-func (r *RedisRepository) UpdateSession(session StudySession) error {
-	exists, err := r.client.Exists(r.ctx, sessionKey(session.ID)).Result()
-	if err != nil {
-		return err
-	}
-	if exists == 0 {
+func (r *MemoryRepository) UpdateSession(session StudySession) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	_, ok := r.sessions[session.ID]
+	if !ok {
 		return ErrSessionNotFound
 	}
 
-	data, err := json.Marshal(session)
-	if err != nil {
-		return err
+	r.sessions[session.ID] = session
+
+	if !session.IsActive {
+		delete(r.heartbeats, session.ID)
 	}
 
-	return r.client.Set(r.ctx, sessionKey(session.ID), data, 0).Err()
+	return nil
 }
 
-func (r *RedisRepository) LogFocusInterval(interval FocusInterval) error {
-	exists, err := r.client.Exists(r.ctx, sessionKey(interval.SessionID)).Result()
-	if err != nil {
-		return err
-	}
-	if exists == 0 {
+func (r *MemoryRepository) LogFocusInterval(interval FocusInterval) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	_, ok := r.sessions[interval.SessionID]
+	if !ok {
 		return ErrSessionNotFound
 	}
 
-	data, err := json.Marshal(interval)
-	if err != nil {
-		return err
-	}
+	r.intervals[interval.SessionID] = append(r.intervals[interval.SessionID], interval)
 
-	return r.client.RPush(r.ctx, intervalsKey(interval.SessionID), data).Err()
+	return nil
 }
 
-func (r *RedisRepository) ListIntervalsBySessionID(sessionID string) ([]FocusInterval, error) {
-	exists, err := r.client.Exists(r.ctx, sessionKey(sessionID)).Result()
-	if err != nil {
-		return nil, err
-	}
-	if exists == 0 {
+func (r *MemoryRepository) ListIntervalsBySessionID(sessionID string) ([]FocusInterval, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	interval, ok := r.intervals[sessionID]
+	if !ok {
 		return []FocusInterval{}, ErrSessionNotFound
 	}
 
-	raw, err := r.client.LRange(r.ctx, intervalsKey(sessionID), 0, -1).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	intervals := make([]FocusInterval, 0, len(raw))
-	for _, item := range raw {
-		var interval FocusInterval
-		if err := json.Unmarshal([]byte(item), &interval); err != nil {
-			return nil, err
-		}
-		intervals = append(intervals, interval)
-	}
-	return intervals, nil
+	return interval, nil
 }
 
-func (r *RedisRepository) ListSessionsByUserID(userID string) ([]StudySession, error) {
-	ids, err := r.client.SMembers(r.ctx, userSessionsKey(userID)).Result()
-	if err != nil {
-		return nil, err
-	}
-	if len(ids) == 0 {
-		return []StudySession{}, nil
-	}
-
-	keys := make([]string, len(ids))
-	for i, id := range ids {
-		keys[i] = sessionKey(id)
-	}
-
-	results, err := r.client.MGet(r.ctx, keys...).Result()
-	if err != nil {
-		return nil, err
-	}
+func (r *MemoryRepository) ListSessionsByUserID(userID string) ([]StudySession, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	var userSessions []StudySession
-	for _, res := range results {
-		if res == nil {
-			continue // session expired/deleted but ID still in the set
+	for _, session := range r.sessions {
+		if session.UserID == userID {
+			userSessions = append(userSessions, session)
 		}
-		var session StudySession
-		if err := json.Unmarshal([]byte(res.(string)), &session); err != nil {
-			return nil, err
-		}
-		userSessions = append(userSessions, session)
 	}
+
 	return userSessions, nil
+}
+
+func (r *MemoryRepository) Heartbeat(sessionID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	session, ok := r.sessions[sessionID]
+	if !ok {
+		return ErrSessionNotFound
+	}
+	if !session.IsActive {
+		return ErrSessionClosed
+	}
+
+	r.heartbeats[sessionID] = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) ListStaleSessionIDs(timeout time.Duration) ([]string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var stale []string
+	now := time.Now()
+	for id, session := range r.sessions {
+		if !session.IsActive {
+			continue
+		}
+		lastSeen, ok := r.heartbeats[id]
+		if !ok || now.Sub(lastSeen) > timeout {
+			stale = append(stale, id)
+		}
+	}
+
+	return stale, nil
 }
