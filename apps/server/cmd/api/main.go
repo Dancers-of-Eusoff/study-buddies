@@ -89,8 +89,8 @@ func main() {
 	chatHandler := chat.NewHandler(chatService)
 	chatHandler.RegisterRoutes(mux)
 
-	// Not Connected to DB
-	roomRepo := rooms.NewMemoryRepository()
+	// Connected to DB
+	roomRepo := rooms.NewPostgresRepository(db)
 	roomService := rooms.NewService(roomRepo)
 	roomHandler := rooms.NewHandler(roomService)
 	roomHandler.RegisterRoutes(mux)
@@ -123,6 +123,7 @@ func main() {
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
 		if r.Method == http.MethodOptions {
 			origin := r.Header.Get("Origin")
 			if allowedOrigins[origin] {
