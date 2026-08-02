@@ -248,7 +248,14 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
   useEffect(() => {
     if (!userId) return;
-    const WS_URL = `ws://${import.meta.env.VITE_BASE_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
+    // VITE_BASE_URL may already include a protocol (e.g. "http://localhost:8080"
+    // locally, "https://study-buddies-q3rd.onrender.com" in prod) — strip it
+    // and rebuild with the matching ws/wss scheme, rather than assuming it's
+    // a bare host and blindly prefixing "ws://".
+    const base = import.meta.env.VITE_BASE_URL as string;
+    const isSecure = base.startsWith('https://');
+    const host = base.replace(/^https?:\/\//, '');
+    const WS_URL = `${isSecure ? 'wss' : 'ws'}://${host}/api/ws?userId=${encodeURIComponent(userId)}`;
     const ws = new WebSocket(WS_URL);
     socketRef.current = ws;
 
