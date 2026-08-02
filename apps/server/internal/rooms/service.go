@@ -8,7 +8,7 @@ type Service struct {
 	repo Repository
 }
 
-func NewService(repo *MemoryRepository) *Service {
+func NewService(repo Repository) *Service {
 	return &Service{
 		repo: repo,
 	}
@@ -27,12 +27,6 @@ func (s *Service) CreateRoom(req CreateRoomRequest) (RoomDetailsResponse, error)
 		return RoomDetailsResponse{}, ErrInvalidRoomType
 	}
 
-	roomID, err := GenerateID("room")
-
-	if err != nil {
-		return RoomDetailsResponse{}, err
-	}
-
 	duration := req.DurationMinutes
 	if duration <= 0 {
 		duration = 60
@@ -48,17 +42,16 @@ func (s *Service) CreateRoom(req CreateRoomRequest) (RoomDetailsResponse, error)
 	}
 
 	room := Room{
-		ID:              roomID,
 		Name:            req.Name,
 		Type:            req.Type,
 		ModuleCode:      req.ModuleCode,
 		InviteCode:      inviteCode,
 		OwnerID:         req.OwnerID,
 		DurationMinutes: duration,
-		CreatedAt:       time.Now(),
 	}
 
-	if err := s.repo.CreateRoom(room); err != nil {
+	room, err := s.repo.CreateRoom(room)
+	if err != nil {
 		return RoomDetailsResponse{}, err
 	}
 

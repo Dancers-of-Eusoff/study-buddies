@@ -1,4 +1,4 @@
-import type { Session, FocusInterval, StartSessionRequest, EndSessionRequest, LogIntervalRequest } from '../types';
+import type { Session, SessionDetailsResponse, FocusInterval, StartSessionRequest, EndSessionRequest, LogIntervalRequest} from "../types/session";
 import apiFetch from './apiFetch';
 
 const PATH: string = '/sessions';
@@ -38,4 +38,16 @@ export async function logInterval(req: LogIntervalRequest): Promise<FocusInterva
   const data = await safeJson(res);
   if (!res.ok) throw new Error(friendlyError(data.error as string ?? '', 'Failed to log interval'));
   return data as unknown as FocusInterval;
+}
+
+export async function getUserSessions(): Promise<SessionDetailsResponse[]> {
+  const res = await apiFetch(`${PATH}/user`, 'GET', includeCred);
+  if (!res.ok) {
+    throw new Error('Failed to fetch user sessions');
+  }
+  return res.json();
+}
+
+export async function heartbeat(sessionId: string): Promise<void> {
+  await apiFetch(`${PATH}/${sessionId}/heartbeat`, 'POST', includeCred);
 }
