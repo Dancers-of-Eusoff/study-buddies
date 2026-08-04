@@ -82,7 +82,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure: isProd,
 		Path: "/",
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 	refreshCookie := http.Cookie{
 		Name: "refreshToken",
