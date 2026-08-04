@@ -248,11 +248,15 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
   useEffect(() => {
     if (!userId) return;
-    const WS_URL = `ws://${import.meta.env.VITE_BASE_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
+    const WS_URL = `ws://${import.meta.env.VITE_WEBSOCKET_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
     const ws = new WebSocket(WS_URL);
     socketRef.current = ws;
 
     ws.onopen = () => ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomId }));
+
+    ws.onerror = (error) => {
+      console.error("WebSocket transport error details:", error);
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -672,7 +676,7 @@ export default function StudyRoomPage() {
                         />
                         <YAxis hide domain={[0, 1]} />
                         <Tooltip
-                          formatter={(_value: number, _name: string, item: { payload: { state: FocusState } }) => [
+                          formatter={(_value, _name, item ) => [
                             FOCUS_STATES.find((f) => f.state === item.payload.state)?.label ?? item.payload.state,
                             'State',
                           ]}
