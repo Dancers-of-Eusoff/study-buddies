@@ -43,7 +43,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		MaxAge: 15 * 60,
 		HttpOnly: true,
 		Secure: isProd,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 	refreshCookie := http.Cookie{
 		Name: "refreshToken",
@@ -52,7 +52,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure: isProd,
 		Path: "/api/auth/refresh",
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, &accessCookie)
@@ -91,7 +91,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure: isProd,
 		Path: "/api/auth/refresh",
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, &accessCookie)
@@ -110,7 +110,7 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure: isProd,
 		Path: "/",
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	refreshCookie := http.Cookie{
@@ -120,7 +120,7 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure: isProd,
 		Path: "/api/auth/refresh",
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, &accessCookie)
@@ -148,7 +148,7 @@ func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure: isProd,
 		Path: "/",
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 
 	http.SetCookie(w, &accessCookie)
