@@ -248,7 +248,7 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
   useEffect(() => {
     if (!userId) return;
-    const WS_URL = `ws://${import.meta.env.VITE_WEBSOCKET_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
+    const WS_URL = `${import.meta.env.VITE_WEBSOCKET_URL}?userId=${encodeURIComponent(userId)}`;
     const ws = new WebSocket(WS_URL);
     socketRef.current = ws;
 

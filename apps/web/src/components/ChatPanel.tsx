@@ -27,7 +27,7 @@ export default function ChatPanel({ roomId }: Props) {
 
   // WebSocket
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:8080/api/ws?userId=${encodeURIComponent(userId)}`);
+    const ws = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_URL}?userId=${encodeURIComponent(userId)}`);
     socketRef.current = ws;
 
     ws.onopen = () => ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomId }));
