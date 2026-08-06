@@ -2,12 +2,12 @@ package users
 
 import (
 	"net/http"
-	"os"
+	// "os"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
-var isProd bool = os.Getenv("APP_ENV") == "production"
+var isProd bool = true
 
 type Handler struct {
 	service *Service

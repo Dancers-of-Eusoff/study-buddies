@@ -164,7 +164,7 @@ const LookAtMe = memo(({ onSample, paused }: { onSample: (f: FocusState) => void
       const vision = await FilesetResolver.forVisionTasks("/wasm");
       objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
         baseOptions: { modelAssetPath: "/models/efficientdet_lite0.tflite" },
-        scoreThreshold: 0.67,
+        scoreThreshold: 0.6,
         runningMode: "VIDEO",
         categoryAllowlist: ["cell phone", "person"]
       });
