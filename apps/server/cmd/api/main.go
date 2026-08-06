@@ -123,23 +123,25 @@ func main() {
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("WS request method: %v", r.Method)
 		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
+		origin := r.Header.Get("Origin")
+		if allowedOrigins[origin] {
+			log.Printf("WS request origin: %v", origin)
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
-			origin := r.Header.Get("Origin")
-			if allowedOrigins[origin] {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-			}
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		wsHandler.HandleConnect(w, r, func(event websocket.Event, client *websocket.Client) {
 			log.Printf("📨 Event [%s] roomId [%s] from user [%s]", event.Type, event.RoomID, client.UserID)
-
+			
 			switch event.Type {
-
+				
 			case "JOIN_ROOM":
 				wsHub.SubscribeToRoom(event.RoomID, client)
 				log.Printf("✅ User [%s] joined room [%s]", client.UserID, event.RoomID)

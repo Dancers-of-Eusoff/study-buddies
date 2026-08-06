@@ -7,7 +7,14 @@ import (
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 )
 
-var isProd bool = os.Getenv("ENV") == "production"
+var isProd bool = os.Getenv("APP_ENV") == "production"
+
+func cookieSameSite() http.SameSite {
+	if isProd {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteLaxMode
+}
 
 type Handler struct {
 	service *Service
@@ -38,21 +45,22 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessCookie := http.Cookie{
-		Name: "accessToken",
-		Value: accessToken,
-		MaxAge: 15 * 60,
+		Name:     "accessToken",
+		Value:    accessToken,
+		MaxAge:   15 * 60,
 		HttpOnly: true,
-		Secure: isProd,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/",
+		SameSite: cookieSameSite(),
 	}
 	refreshCookie := http.Cookie{
-		Name: "refreshToken",
-		Value: refreshToken,
-		MaxAge: 60 * 60 * 24 * 7,
+		Name:     "refreshToken",
+		Value:    refreshToken,
+		MaxAge:   60 * 60 * 24 * 7,
 		HttpOnly: true,
-		Secure: isProd,
-		Path: "/api/auth/refresh",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/api/auth/refresh",
+		SameSite: cookieSameSite(),
 	}
 
 	http.SetCookie(w, &accessCookie)
@@ -76,22 +84,22 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessCookie := http.Cookie{
-		Name: "accessToken",
-		Value: accessToken,
-		MaxAge: 15 * 60,
+		Name:     "accessToken",
+		Value:    accessToken,
+		MaxAge:   15 * 60,
 		HttpOnly: true,
-		Secure: isProd,
-		Path: "/",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/",
+		SameSite: cookieSameSite(),
 	}
 	refreshCookie := http.Cookie{
-		Name: "refreshToken",
-		Value: refreshToken,
-		MaxAge: 60 * 60 * 24 * 7,
+		Name:     "refreshToken",
+		Value:    refreshToken,
+		MaxAge:   60 * 60 * 24 * 7,
 		HttpOnly: true,
-		Secure: isProd,
-		Path: "/api/auth/refresh",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/api/auth/refresh",
+		SameSite: cookieSameSite(),
 	}
 
 	http.SetCookie(w, &accessCookie)
@@ -104,23 +112,23 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	accessCookie := http.Cookie{
-		Name: "accessToken",
-		Value: "",
-		MaxAge: -1,
+		Name:     "accessToken",
+		Value:    "",
+		MaxAge:   -1,
 		HttpOnly: true,
-		Secure: isProd,
-		Path: "/",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/",
+		SameSite: cookieSameSite(),
 	}
 
 	refreshCookie := http.Cookie{
-		Name: "refreshToken",
-		Value: "",
-		MaxAge: -1,
+		Name:     "refreshToken",
+		Value:    "",
+		MaxAge:   -1,
 		HttpOnly: true,
-		Secure: isProd,
-		Path: "/api/auth/refresh",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/api/auth/refresh",
+		SameSite: cookieSameSite(),
 	}
 
 	http.SetCookie(w, &accessCookie)
@@ -142,13 +150,13 @@ func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, err := h.service.Refresh(claims)
 	accessCookie := http.Cookie{
-		Name: "accessToken",
-		Value: accessToken,
-		MaxAge: 15 * 60,
+		Name:     "accessToken",
+		Value:    accessToken,
+		MaxAge:   15 * 60,
 		HttpOnly: true,
-		Secure: isProd,
-		Path: "/",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProd,
+		Path:     "/",
+		SameSite: cookieSameSite(),
 	}
 
 	http.SetCookie(w, &accessCookie)
