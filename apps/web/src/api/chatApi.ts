@@ -11,7 +11,7 @@ export interface ChatMessage {
 const PATH = '/chat'
 
 export async function getChatHistory(roomId: string): Promise<ChatMessage[]> {
-  const res = await apiFetch(`${PATH}/history?roomId=${encodeURIComponent(roomId)}`, 'GET')
+  const res = await apiFetch(`${PATH}/history?roomId=${encodeURIComponent(roomId)}`, 'GET', { credentials: 'include' })
   if (!res.ok) throw new Error('Failed to fetch chat history');
   const data = await res.json();
   return (Array.isArray(data) ? data : []) as ChatMessage[];
