@@ -11,6 +11,9 @@ import (
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/chat"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/dashboards"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/focus"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/focus_sessions"
+	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/rooms"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/sessions"
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/users"
@@ -65,51 +68,56 @@ func NewDB(connStr string) (*sql.DB, error) {
 }
 
 func main() {
-	// DB connection
 	if err := godotenv.Load(".env.local"); err != nil {
-		log.Println("no .env.local file found") // non-fatal, prod uses real env vars
+		log.Println("no .env.local file found") // non-fatal in prod
 	}
 
+	// --- DB connection ---
 	connStr := os.Getenv("DATABASE_URL")
 	db, err := NewDB(connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// --- HTTP Mux ---
 	mux := http.NewServeMux()
 
-	// --- WebSocket Infrastructure ---
+	// --- WebSocket ---
 	wsHub := websocket.NewHub()
 	go wsHub.Run()
 
-	// --- Existing Feature Packages ---
-	// --- Chat Service (wired to WebSocket hub) ---
 	chatRepo := chat.NewMemoryRepository()
 	chatService := chat.NewService(chatRepo, wsHub)
 	chatHandler := chat.NewHandler(chatService)
 	chatHandler.RegisterRoutes(mux)
 
-	// Connected to DB
 	roomRepo := rooms.NewPostgresRepository(db)
 	roomService := rooms.NewService(roomRepo)
 	roomHandler := rooms.NewHandler(roomService)
 	roomHandler.RegisterRoutes(mux)
 
-	// Live session state stays in-memory (heartbeat + focus intervals);
-	// finished sessions are summarized to Postgres via summaryRepo below.
+	// --- Kelven ---
+	// Live session state stays in-memory (heartbeat + focus intervals)
 	sessionRepo := sessions.NewMemoryRepository()
 	summaryRepo := sessions.NewPostgresSummaryRepository(db)
 	sessionService := sessions.NewService(sessionRepo, summaryRepo)
 	sessionHandler := sessions.NewHandler(sessionService)
 	sessionHandler.RegisterRoutes(mux)
+	
+	// --- Hougen ---
+	focusSummaryRepo := focus_sessions.NewPostgresSummaryRepository(db)
+	// Focus registry
+	focusRegistry := focus.NewRegistry(wsHub, focus.DefaultScoringConfig(), focus_sessions.NewOnRoomEnd(focusSummaryRepo))
+	roomLookup := focus_sessions.NewRoomLookup(roomRepo)
+	focusSessionService := focus_sessions.NewService(roomLookup, focusRegistry)
+	focusSessionHandler := focus_sessions.NewHandler(focusSessionService)
+	focusSessionHandler.RegisterRoutes(mux)
 
-	// Force-ends sessions whose heartbeat has gone silent (crashed tab,
-	// dead laptop, dropped network) so they still get summarized.
+	// Force-ends sessions whose heartbeat has gone silent so they still get summarized.
 	sweepCtx, cancelSweep := context.WithCancel(context.Background())
 	defer cancelSweep()
 	go sessionService.StartSweeper(sweepCtx, sessionSweepInterval, sessionStaleTimeout)
 
-	// Connected to DB
 	dashboardRepo := dashboards.NewDashboardRepo(db)
 	dashboardService := dashboards.NewService(dashboardRepo)
 	dashboardHandler := dashboards.NewHandler(dashboardService)
@@ -122,8 +130,7 @@ func main() {
 
 	// --- WebSocket endpoint ---
 	wsHandler := websocket.NewHandler(wsHub)
-	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("WS request method: %v", r.Method)
+	mux.HandleFunc("/api/ws", helper.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		// Handle OPTIONS preflight before WebSocket upgrade to avoid hijack errors
 		origin := r.Header.Get("Origin")
 		if allowedOrigins[origin] {
@@ -155,9 +162,12 @@ func main() {
 				if _, err := chatService.ProcessSentMessage(payload); err != nil {
 					log.Printf("❌ ProcessSentMessage error: %v", err)
 				}
+
+			case "FOCUS_STATE":
+    			focusRegistry.HandleFocusState(event, client)
 			}
 		})
-	})
+	}))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

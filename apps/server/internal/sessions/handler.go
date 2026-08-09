@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
@@ -111,7 +110,6 @@ func (h *Handler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user, ok := helper.UserFromContext(r.Context())
-	fmt.Println(ok)
 
 	if ok == false {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

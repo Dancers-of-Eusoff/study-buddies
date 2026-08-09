@@ -12,13 +12,14 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 4096 // bumped from 512 — large enough for any chat message envelope
+	maxMessageSize = 4096
 )
 
 type Client struct {
 	Hub    *Hub
 	Conn   *websocket.Conn
 	UserID string
+	Username string
 	send   chan Event
 }
 

@@ -1,7 +1,6 @@
 package dashboards
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
@@ -107,8 +106,6 @@ func (h *Handler) GetSelectedMemes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
-	fmt.Println(user.UserID)
 
 	memes, err := h.service.GetSelectedMemeID(user.UserID)
 	if err != nil {
