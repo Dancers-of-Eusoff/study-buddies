@@ -1,16 +1,21 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision";
+import {
+  BarChart, Bar, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { getRoomDetails } from '../api/roomsApi';
-import { startSession, endSession } from '../api/sessionsApi';
+import { startSession, endSession, logInterval, heartbeat } from '../api/sessionsApi';
 import { getChatHistory, type ChatMessage } from '../api/chatApi';
-import { getMyDashboard, getAllMemes } from '../api/dashboardApi';
+import { getMemesResponse, getAllMemes } from '../api/dashboardApi';
 import { useTimer } from '../hooks/useTimer';
 import styles from "./StudyRoomPage.module.css";
 import btn from '../components/Buttons.module.css';
-import type { RoomDetails, Session, FocusState } from '../types';
+import type { RoomDetails } from '../types';
+import type { Session, FocusState } from '../types/session';
 
 const FOCUS_STATES: { state: FocusState; label: string; emoji: string; colorVar: string }[] = [
   { state: 'FOCUSED',    label: 'Focused',    emoji: '🟢', colorVar: 'var(--leaf-deep)' },
@@ -30,6 +35,24 @@ const DEFAULT_MEMES = [
     videoURL: 'https://res.cloudinary.com/jlixjhrm/video/upload/v1783512025/gahdyum_a93h6l.webm', // Replace with second default video URL
   },
 ];
+
+// How often we sample the camera and update focus state
+const DETECTION_INTERVAL_MS = 3000;
+
+// Given all the samples collected during one minute, returns whichever state
+// occurred most often — a fairer summary than whatever state happened to be
+// active at the exact moment the minute boundary was crossed.
+function getMajorityState(samples: FocusState[]): FocusState {
+  const counts = new Map<FocusState, number>();
+  for (const s of samples) counts.set(s, (counts.get(s) ?? 0) + 1);
+
+  let majority: FocusState = 'FOCUSED';
+  let max = 0;
+  for (const [state, count] of counts) {
+    if (count > max) { max = count; majority = state; }
+  }
+  return majority;
+}
 
 // ─── Destress button ────────────────────────────────────────────────────────
 
@@ -61,7 +84,6 @@ function Flashbang({
     if (myFocusState === 'DISTRACTED') {
       let memeUrl = '';
 
-      // 1. If user selected a specific meme, use that meme
       if (selectedMemeId) {
         const combined = [...userMemes, ...allMemes];
         const selectedMeme = combined.find((m) => m.id === selectedMemeId);
@@ -70,8 +92,6 @@ function Flashbang({
         }
       }
 
-      // 2. Default: If no meme is chosen or selected meme wasn't found,
-      // pick randomly from all user-submitted memes + 2 default memes
       if (!memeUrl) {
         const pool = [...allMemes, ...userMemes, ...DEFAULT_MEMES];
         // Deduplicate by videoURL to avoid overweighting duplicates
@@ -102,45 +122,93 @@ function Flashbang({
 
 // ─── Camera / object detection ───────────────────────────────────────────────
 
-const LookAtMe = memo(({ myFocusState, setMyFocusState }: { myFocusState: FocusState; setMyFocusState: (f: FocusState) => void }) => {
+const LookAtMe = memo(({ onSample, paused }: { onSample: (f: FocusState) => void; paused: boolean }) => {
   const objectDetectorRef = useRef<ObjectDetector>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const pausedRef = useRef(paused);
+
+  // Holds the latest detection routine so the pause/resume effect below can
+  // trigger an immediate sample on resume, instead of waiting for the next tick.
+  const runDetectionRef = useRef<() => void>(() => {});
 
   useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) {
+      onSample("PAUSED");
+    } else {
+      runDetectionRef.current();
+    }
+  }, [paused, onSample]);
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let stream: MediaStream | undefined;
+    let cancelled = false;
+
+    const runDetection = () => {
+      if (!objectDetectorRef.current || !videoRef.current || pausedRef.current) return;
+
+      const startTimeMs = performance.now();
+      const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
+      const categories = results.detections.flatMap((d) => d.categories.map((c) => c.categoryName));
+      const personDetected = categories.includes("person");
+      const phoneDetected = categories.includes("cell phone");
+
+      if (!personDetected) onSample("NO_FACE");
+      else if (phoneDetected) onSample("DISTRACTED");
+      else onSample("FOCUSED");
+    };
+    runDetectionRef.current = runDetection;
+
     const init = async () => {
       const vision = await FilesetResolver.forVisionTasks("/wasm");
       objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
         baseOptions: { modelAssetPath: "/models/efficientdet_lite0.tflite" },
-        scoreThreshold: 0.67,
+        scoreThreshold: 0.6,
         runningMode: "VIDEO",
-        categoryAllowlist: ["cell phone"]
+        categoryAllowlist: ["cell phone", "person"]
       });
     };
 
     const startCamera = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        predictWebcam();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (err) {
+        console.error("Failed to access camera:", err);
+        return;
       }
-    };
 
-    function predictWebcam() {
-      if (objectDetectorRef.current && videoRef.current) {
-        const startTimeMs = performance.now();
-        const results = objectDetectorRef.current.detectForVideo(videoRef.current, startTimeMs);
-        console.log(`Detections result: ${results.detections[0]}\nFocus state: ${myFocusState}`);
-        if (results.detections.length > 0 && myFocusState !== "DISTRACTED") {
-          setMyFocusState("DISTRACTED");
-        }
-        requestAnimationFrame(predictWebcam);
+      // The effect was already cleaned up (e.g. React's dev-mode double
+      // mount/unmount) before permission resolved — release the camera
+      // immediately instead of attaching it to a dead component.
+      if (cancelled || !videoRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
       }
-    }
+
+      videoRef.current.srcObject = stream;
+      try {
+        await videoRef.current.play();
+      } catch (err) {
+        // Expected if the component unmounts/remounts while play() is still
+        // pending — not a real failure.
+        if ((err as DOMException).name !== "AbortError") console.error(err);
+        return;
+      }
+
+      if (cancelled) return;
+      intervalId = setInterval(runDetection, DETECTION_INTERVAL_MS);
+    };
 
     init();
     startCamera();
-  }, []);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [onSample]);
 
   return (
     <div className={styles.focusVideo}>
@@ -180,11 +248,15 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
   useEffect(() => {
     if (!userId) return;
-    const WS_URL = `ws://${import.meta.env.VITE_BASE_URL}/api/ws?userId=${encodeURIComponent(userId)}`;
+    const WS_URL = `${import.meta.env.VITE_WEBSOCKET_URL}?userId=${encodeURIComponent(userId)}`;
     const ws = new WebSocket(WS_URL);
     socketRef.current = ws;
 
     ws.onopen = () => ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomId }));
+
+    ws.onerror = (error) => {
+      console.error("WebSocket transport error details:", error);
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -292,7 +364,8 @@ export default function StudyRoomPage() {
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState('');
 
-  const [myFocusState, setMyFocusState] = useState<FocusState>('FOCUSED');
+  const [myFocusState, setMyFocusState] = useState<FocusState>('NO_FACE');
+  const [trackingPaused, setTrackingPaused] = useState(false);
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -303,8 +376,71 @@ export default function StudyRoomPage() {
   const [allMemes, setAllMemes] = useState<{ id?: string; videoURL: string }[]>([]);
   const [selectedMemeId, setSelectedMemeId] = useState<string | null>(null);
 
-  const sessionActive = session !== null && session.status === 'ACTIVE';
+  const [liveFocusLog, setLiveFocusLog] = useState<{ minute: number; state: FocusState; value: number }[]>([]);
+
+  // Every 3s camera sample lands here; drained into a majority state each minute.
+  const sampleLogRef = useRef<FocusState[]>([]);
+  const myFocusStateRef = useRef(myFocusState);
+  const handleFocusSample = useCallback((state: FocusState) => {
+    setMyFocusState(state);
+    myFocusStateRef.current = state;
+    sampleLogRef.current.push(state);
+  }, []);
+
+  const sessionActive = session !== null && session.isActive;
   const { formatted: elapsed, elapsed: elapsedSecs } = useTimer(sessionActive);
+
+  // Reset the live log whenever a fresh session starts
+  useEffect(() => {
+    if (session?.id) {
+      setLiveFocusLog([]);
+      sampleLogRef.current = [];
+    }
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (!sessionActive || !session?.id) return;
+
+    const timer = setInterval(() => {
+      const minuteState = sampleLogRef.current.length > 0
+        ? getMajorityState(sampleLogRef.current)
+        : myFocusStateRef.current;
+      sampleLogRef.current = [];
+
+      logInterval({
+        sessionId: session.id,
+        state: minuteState,
+      }).catch((err) => console.error('Failed to log interval:', err));
+
+      setLiveFocusLog((prev) => [...prev, { minute: prev.length + 1, state: minuteState, value: 1 }]);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(timer);
+  }, [sessionActive, session?.id]);
+
+  // Tells the server this session is still alive — the backend force-ends
+  // sessions whose heartbeat goes silent (crashed tab, dead laptop, dropped
+  // network). Independent of focus logging: even a PAUSED/DISTRACTED user
+  // still needs to keep the heartbeat going or the sweep wrongly concludes
+  // they've left.
+  useEffect(() => {
+    if (!sessionActive || !session?.id) return;
+
+    const beat = setInterval(() => {
+      heartbeat(session.id).catch(() => { /* missed beat is fine, next tick retries */ });
+    }, 20000); // 20 seconds — well under the backend's 45s stale timeout
+
+    return () => clearInterval(beat);
+  }, [sessionActive, session?.id]);
+
+  // Focused vs distracted minute breakdown for the in-session summary
+  const focusStats = useMemo(() => {
+    const total = liveFocusLog.length;
+    const focused = liveFocusLog.filter((e) => e.state === 'FOCUSED').length;
+    const distracted = liveFocusLog.filter((e) => e.state === 'DISTRACTED').length;
+    const focusPct = total > 0 ? Math.round((focused / total) * 100) : 0;
+    return { focused, distracted, focusPct };
+  }, [liveFocusLog]);
 
   const loadRoom = useCallback(async () => {
     if (!user || !roomId) return;
@@ -327,7 +463,7 @@ export default function StudyRoomPage() {
         if (typeof getAllMemes === 'function') {
           const globalData = await getAllMemes();
           if (Array.isArray(globalData)) {
-            // Map global memes if needed
+            // Map global memes if needed 
             setAllMemes(globalData.map((m: any) => ({
               id: m.id || m.ID,
               videoURL: m.videoURL || m.VideoURL,
@@ -336,7 +472,7 @@ export default function StudyRoomPage() {
         }
 
         if (user?.userId) {
-          const userData = await getMyDashboard();
+          const userData = await getMemesResponse();
           if (userData) {
             const rawUserMemes = userData.memes;
             if (Array.isArray(rawUserMemes)) {
@@ -467,7 +603,7 @@ export default function StudyRoomPage() {
 
           {/* Camera */}
           <div className={styles.cameraCard}>
-            <LookAtMe myFocusState={myFocusState} setMyFocusState={setMyFocusState} />
+            <LookAtMe onSample={handleFocusSample} paused={trackingPaused} />
           </div>
 
           {/* Session card */}
@@ -494,21 +630,65 @@ export default function StudyRoomPage() {
                 <div className={styles.progressTrack}>
                   <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
                 </div>
-                {/* Focus state picker */}
+                {/* Focus status — live from the camera */}
                 <div>
-                  <p className={styles.focusPickerLabel}>Your focus state (manual for now):</p>
+                  <p className={styles.focusPickerLabel}>Focus status (live from your camera):</p>
                   <div className={styles.focusPickerRow}>
-                    {FOCUS_STATES.map((f) => (
-                      <button
-                        key={f.state}
-                        onClick={() => setMyFocusState(f.state)}
-                        className={styles.focusChip}
-                        style={myFocusState === f.state
-                          ? { color: f.colorVar, borderColor: f.colorVar, fontWeight: 800 }
-                          : undefined}
-                      >{f.emoji} {f.label}</button>
-                    ))}
+                    <span
+                      className={styles.focusChip}
+                      style={{ color: focusInfo.colorVar, borderColor: focusInfo.colorVar, fontWeight: 800 }}
+                    >{focusInfo.emoji} {focusInfo.label}</span>
+                    <button
+                      onClick={() => setTrackingPaused((p) => !p)}
+                      className={styles.focusChip}
+                    >{trackingPaused ? '▶️ Resume tracking' : '⏸️ Pause tracking'}</button>
                   </div>
+                </div>
+                {/* Focus summary */}
+                <div className={styles.statsRow}>
+                  {[
+                    ['Focused', `${focusStats.focused} min`, 'var(--leaf-deep)'],
+                    ['Distracted', `${focusStats.distracted} min`, 'var(--coral-deep)'],
+                    ['Focus rate', `${focusStats.focusPct}%`, 'var(--bark)'],
+                  ].map(([label, value, color]) => (
+                    <div key={label} className={styles.statCard}>
+                      <div className={styles.statLabel}>{label}</div>
+                      <div className={styles.statValue} style={{ color }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Live focus timeline */}
+                <div style={{ background: 'var(--paper, #fff)', borderRadius: 12, padding: '12px 8px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bark)', marginBottom: 6, paddingLeft: 8 }}>
+                    Focus timeline
+                  </div>
+                  {liveFocusLog.length === 0 ? (
+                    <p className={styles.panelEmpty}>Your timeline will appear after the first minute is logged.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={70}>
+                      <BarChart data={liveFocusLog} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barCategoryGap={1}>
+                        <XAxis
+                          dataKey="minute"
+                          tick={{ fontSize: 11, fill: 'var(--bark)' }}
+                          axisLine={false}
+                          tickLine={false}
+                          label={{ value: 'min', position: 'insideBottomRight', offset: -2, fontSize: 10 }}
+                        />
+                        <YAxis hide domain={[0, 1]} />
+                        <Tooltip
+                          formatter={(_value, _name, item ) => [
+                            FOCUS_STATES.find((f) => f.state === item.payload.state)?.label ?? item.payload.state,
+                            'State',
+                          ]}
+                        />
+                        <Bar dataKey="value" radius={[3, 3, 3, 3]}>
+                          {liveFocusLog.map((entry, i) => (
+                            <Cell key={i} fill={FOCUS_STATES.find((f) => f.state === entry.state)?.colorVar ?? 'var(--bark)'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
                 {/* Stats */}
                 <div className={styles.statsRow}>

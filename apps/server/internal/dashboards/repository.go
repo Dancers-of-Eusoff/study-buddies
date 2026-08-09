@@ -9,7 +9,6 @@ type Repository interface {
 	AddMeme(meme *SubmittedMemeDTO) (*MemeDTO, error)
 	SetSelectedMeme(userId string, memeId string) error
 	GetSelectedMemeID(userId string) (*string, error)
-	GetAllMemes() (*[]MemeDTO, error)
 }
 
 type DashboardRepo struct {
@@ -22,7 +21,7 @@ func NewDashboardRepo(db *sql.DB) *DashboardRepo {
 
 func (r *DashboardRepo) GetMemesByUser(userId string) (*[]MemeDTO, error) {
 	var memes []MemeDTO
-	query := `SELECT id, title, video_url, thumbnail_url, created_at FROM memes WHERE uploader_id = $1`
+	query := `SELECT id, title, video_url, thumbnail_url, created_at FROM memes WHERE (uploader_id = $1 or is_public = true)`
 
 	rows, err := r.db.Query(query, userId)
 	if err != nil {
@@ -87,30 +86,4 @@ func (r *DashboardRepo) GetSelectedMemeID(userId string) (*string, error) {
 	}
 	s := selectedMemeID.String
 	return &s, nil
-}
-
-func (r *DashboardRepo) GetAllMemes() (*[]MemeDTO, error) {
-	var memes []MemeDTO
-	query := `SELECT id, title, video_url, thumbnail_url, created_at FROM memes ORDER BY created_at DESC`
-
-	rows, err := r.db.Query(query)
-	if err != nil {
-		return &[]MemeDTO{}, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var meme MemeDTO
-		if err := rows.Scan(
-			&meme.ID,
-			&meme.Title,
-			&meme.VideoURL,
-			&meme.ThumbnailURL,
-			&meme.CreatedAt,
-		); err != nil {
-			return &[]MemeDTO{}, err
-		}
-		memes = append(memes, meme)
-	}
-	return &memes, nil
 }

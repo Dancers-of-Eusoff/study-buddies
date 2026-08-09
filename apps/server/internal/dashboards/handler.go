@@ -1,6 +1,7 @@
 package dashboards
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
@@ -19,6 +20,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/dashboard/submit-meme", helper.RequireAuth(h.AddMeme))
 	mux.HandleFunc("POST /api/dashboard/select-meme", helper.RequireAuth(h.SelectMeme))
 	mux.HandleFunc("GET /api/dashboard/memes", helper.RequireAuth(h.GetAllMemes))
+	mux.HandleFunc("GET /api/dashboard/selected-memes", helper.RequireAuth(h.GetSelectedMemes))
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
@@ -84,16 +86,35 @@ func (h *Handler) SelectMeme(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAllMemes(w http.ResponseWriter, r *http.Request) {
-	memes, err := h.service.GetAllMemes()
-	if err != nil {
-		http.Error(w, "Unable to get memes", http.StatusInternalServerError)
+	user, ok := helper.UserFromContext(r.Context())
+	if ok == false {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	memeList := *memes
-	if memeList == nil {
-		memeList = []MemeDTO{}
+	memes, err := h.service.GetMemes(user.UserID)
+	if err != nil {
+		http.Error(w, "Unable to get private memes", http.StatusInternalServerError)
+		return
 	}
 
-	helper.WriteJSON(w, http.StatusOK, memeList)
+	helper.WriteJSON(w, http.StatusOK, memes)
+}
+
+func (h *Handler) GetSelectedMemes(w http.ResponseWriter, r *http.Request) {
+	user, ok := helper.UserFromContext(r.Context())
+	if ok == false {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Println(user.UserID)
+
+	memes, err := h.service.GetSelectedMemeID(user.UserID)
+	if err != nil {
+		http.Error(w, "Unable to get private memes", http.StatusInternalServerError)
+		return
+	}
+
+	helper.WriteJSON(w, http.StatusOK, memes)
 }

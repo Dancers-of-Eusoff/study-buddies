@@ -12,7 +12,9 @@ import {
 } from 'recharts';
 import btn from '../components/Buttons.module.css';
 import styles from './DashboardPage.module.css';
-import { addMemeToCloud, addMemeToPG, getMyDashboard, selectMemePG, getAllMemes } from '../api/dashboardApi';
+import { addMemeToCloud, addMemeToPG, selectMemePG, getMemesResponse } from '../api/dashboardApi';
+import { getUserSessions} from '../api/sessionsApi';
+import {type SessionDetailsResponse, type FocusInterval} from '../types/session'
 import type { Meme, MemeDTO } from '../types/dashboard';
 
 type Interval = 'daily' | 'weekly' | 'monthly';
@@ -77,73 +79,125 @@ function getRangeLabel(interval: Interval, date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
-// ── Deterministic mock-data generators ────────────────────────────────────────
+// ── Real session-data aggregation ───────────────────────────────────────────────
 
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
+function flattenIntervals(sessionsData: SessionDetailsResponse[]): FocusInterval[] {
+  return sessionsData.flatMap((s) => s.intervals ?? []);
+}
+
+function getDayPart(date: Date): 'Morning' | 'Afternoon' | 'Evening' | 'Night' {
+  const h = date.getHours();
+  if (h >= 5 && h < 12) return 'Morning';
+  if (h >= 12 && h < 17) return 'Afternoon';
+  if (h >= 17 && h < 21) return 'Evening';
+  return 'Night';
+}
+
+function getWeekOfMonth(date: Date): number {
+  return Math.min(5, Math.ceil((date.getDate() + new Date(date.getFullYear(), date.getMonth(), 1).getDay()) / 7));
+}
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getRangeBounds(interval: Interval, anchor: Date): [Date, Date] {
+  if (interval === 'daily') {
+    const start = new Date(anchor);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return [start, end];
   }
-  return Math.abs(hash);
+  if (interval === 'weekly') {
+    const start = startOfWeek(anchor);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return [start, end];
+  }
+  const start = startOfMonth(anchor);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  return [start, end];
 }
 
-function seededInRange(seed: string, min: number, max: number): number {
-  return min + (hashString(seed) % (max - min + 1));
+function inRange(d: Date, start: Date, end: Date): boolean {
+  return d >= start && d < end;
 }
 
-function getFocusDistractionData(seedKey: string) {
-  const focusMin = seededInRange(`${seedKey}-focus`, 90, 340);
-  const distractMin = seededInRange(`${seedKey}-distract`, 15, 100);
+function sumSeconds(intervals: FocusInterval[], predicate: (iv: FocusInterval) => boolean): number {
+  return intervals.reduce((acc, iv) => (predicate(iv) ? acc + (iv.durationSeconds ?? 0) : acc), 0);
+}
+
+function getFocusDistractionData(sessionsData: SessionDetailsResponse[], interval: Interval, anchor: Date) {
+  const [start, end] = getRangeBounds(interval, anchor);
+  const intervals = flattenIntervals(sessionsData).filter((iv) => inRange(new Date(iv.createdAt), start, end));
+
+  const focusSec = sumSeconds(intervals, (iv) => iv.state === 'FOCUSED');
+  const distractSec = sumSeconds(intervals, (iv) => iv.state !== 'FOCUSED');
+
   return [
-    { name: 'Focused', value: focusMin, color: 'var(--leaf)' },
-    { name: 'Distracted', value: distractMin, color: 'var(--coral)' },
+    { name: 'Focused', value: round1(focusSec / 60), color: 'var(--leaf)' },
+    { name: 'Distracted', value: round1(distractSec / 60), color: 'var(--coral)' },
   ];
 }
 
-function getBarData(interval: Interval, anchor: Date) {
+function getBarData(sessionsData: SessionDetailsResponse[], interval: Interval, anchor: Date) {
+  const allIntervals = flattenIntervals(sessionsData);
+  const [rangeStart, rangeEnd] = getRangeBounds(interval, anchor);
+  const inWindow = allIntervals.filter((iv) => inRange(new Date(iv.createdAt), rangeStart, rangeEnd));
+
   if (interval === 'daily') {
     return ['Morning', 'Afternoon', 'Evening', 'Night'].map((label) => ({
       label,
-      hours: round1(seededInRange(`${label}-${anchor.toDateString()}`, 0, 180) / 60),
+      hours: round1(sumSeconds(inWindow, (iv) => getDayPart(new Date(iv.createdAt)) === label) / 3600),
     }));
   }
   if (interval === 'weekly') {
-    const weekKey = startOfWeek(anchor).toDateString();
-    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => ({
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return labels.map((label, i) => ({
       label,
-      hours: round1(seededInRange(`${label}-${weekKey}`, 0, 300) / 60),
+      hours: round1(sumSeconds(inWindow, (iv) => {
+        const d = new Date(iv.createdAt);
+        const idx = (d.getDay() + 6) % 7; // Mon = 0 ... Sun = 6
+        return idx === i;
+      }) / 3600),
     }));
   }
-  const monthKey = `${anchor.getFullYear()}-${anchor.getMonth()}`;
-  return ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5'].map((label) => ({
+  return ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5'].map((label, i) => ({
     label,
-    hours: round1(seededInRange(`${label}-${monthKey}`, 300, 1400) / 60),
+    hours: round1(sumSeconds(inWindow, (iv) => getWeekOfMonth(new Date(iv.createdAt)) === i + 1) / 3600),
   }));
 }
 
-function getGrowthData(interval: Interval, anchor: Date) {
+function getGrowthData(sessionsData: SessionDetailsResponse[], interval: Interval, anchor: Date) {
+  const allIntervals = flattenIntervals(sessionsData);
   const points: { label: string; hours: number }[] = [];
+
   for (let i = 6; i >= 0; i--) {
     const d = new Date(anchor);
     let label = '';
-    let key = '';
+    let start: Date;
+    let end: Date;
+
     if (interval === 'daily') {
       d.setDate(d.getDate() - i);
       label = d.toLocaleDateString('en-US', { weekday: 'short' });
-      key = d.toDateString();
+      [start, end] = getRangeBounds('daily', d);
     } else if (interval === 'weekly') {
       d.setDate(d.getDate() - i * 7);
       const wStart = startOfWeek(d);
       label = wStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      key = wStart.toDateString();
+      [start, end] = getRangeBounds('weekly', d);
     } else {
       d.setMonth(d.getMonth() - i);
       label = d.toLocaleDateString('en-US', { month: 'short' });
-      key = `${d.getFullYear()}-${d.getMonth()}`;
+      [start, end] = getRangeBounds('monthly', d);
     }
-    points.push({ label, hours: round1(seededInRange(`growth-${key}`, 60, 360) / 60) });
+
+    const hours = sumSeconds(allIntervals, (iv) => inRange(new Date(iv.createdAt), start, end)) / 3600;
+    points.push({ label, hours: round1(hours) });
   }
+
   return points;
 }
 
@@ -175,17 +229,22 @@ export default function DashboardPage() {
   const [uploadedMeme, setUploadedMeme] = useState<File | undefined>();
   const [isAddingMeme, setIsAddingMeme] = useState<boolean>(false);
 
+  const [sessionsData, setSessionsData] = useState<SessionDetailsResponse[]>([]);
+
   const rangeLabel = useMemo(() => getRangeLabel(activeTab, selectedDate), [activeTab, selectedDate]);
 
-  const seedKey = useMemo(() => {
-    if (activeTab === 'daily') return selectedDate.toDateString();
-    if (activeTab === 'weekly') return startOfWeek(selectedDate).toDateString();
-    return `${selectedDate.getFullYear()}-${selectedDate.getMonth()}`;
-  }, [activeTab, selectedDate]);
-
-  const pieData = useMemo(() => getFocusDistractionData(seedKey), [seedKey]);
-  const barData = useMemo(() => getBarData(activeTab, selectedDate), [activeTab, selectedDate]);
-  const growthData = useMemo(() => getGrowthData(activeTab, selectedDate), [activeTab, selectedDate]);
+  const pieData = useMemo(
+    () => getFocusDistractionData(sessionsData, activeTab, selectedDate),
+    [sessionsData, activeTab, selectedDate]
+  );
+  const barData = useMemo(
+    () => getBarData(sessionsData, activeTab, selectedDate),
+    [sessionsData, activeTab, selectedDate]
+  );
+  const growthData = useMemo(
+    () => getGrowthData(sessionsData, activeTab, selectedDate),
+    [sessionsData, activeTab, selectedDate]
+  );
 
   const weekStart = useMemo(() => startOfWeek(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => endOfWeek(selectedDate), [selectedDate]);
@@ -257,68 +316,33 @@ export default function DashboardPage() {
       if (!user?.userId) return;
 
       try {
-        // Fetch both simultaneously, catching individual errors so one doesn't crash the other
-        const [dashboardData, publicMemesData] = await Promise.all([
-          getMyDashboard().catch((err) => {
-            console.error('Error fetching user dashboard:', err);
+        const [MemesData, userSessions] = await Promise.all([
+          getMemesResponse().catch((err) => {
+            console.error('No selected memes:', err);
             return null;
           }),
-          getAllMemes().catch((err) => {
-            console.warn('Could not load public memes:', err);
+          getUserSessions().catch((err) => {
+            console.error('Failed to fetch user sessions:', err);
             return [];
           }),
         ]);
 
-        // const [memeData, userData, summmaryData] = await Promise.all(
-        //   getMemes();
-        //   getUserData();
-        //   getSummary();
-        // )
-
-        let combinedMemes: any[] = [];
-
-        // 1. Format public memes
-        if (Array.isArray(publicMemesData)) {
-          const mappedPublic = publicMemesData.map((m: any) => ({
-            id: m.id || m.ID,
-            title: m.title || m.Title,
-            videoURL: m.videoURL || m.VideoURL,
-            thumbnailURL: m.thumbnailURL || m.ThumbnailURL,
-            createdAt: m.createdAt || m.CreatedAt,
-          }));
-          combinedMemes = [...mappedPublic];
+        if (userSessions) {
+          setSessionsData(userSessions);
         }
 
-        // 2. Format personal memes
-        const rawMemes = dashboardData?.memes;
-        if (Array.isArray(rawMemes)) {
-          const mappedPersonal = rawMemes.map((m: any) => ({
-            id: m.id || m.ID,
-            title: m.title || m.Title,
-            videoURL: m.videoURL || m.VideoURL,
-            thumbnailURL: m.thumbnailURL || m.ThumbnailURL,
-            createdAt: m.createdAt || m.CreatedAt,
-          }));
-
-          // Avoid duplicate entries if a meme is in both lists
-          const existingIds = new Set(combinedMemes.map((m) => m.id));
-          const uniquePersonal = mappedPersonal.filter((m) => !existingIds.has(m.id));
-
-          combinedMemes = [...combinedMemes, ...uniquePersonal];
+        if (MemesData) {
+          const selectedId = MemesData?.selectedMemeId;
+          if (selectedId) {
+            MemesData.memes.sort((a, b) => {
+              if (a.id === selectedId) return -1;
+              if (b.id === selectedId) return 1;
+              return 0;
+            });
+            setSelectedMemeId(selectedId);
+          }
+          setMemes(MemesData.memes);
         }
-
-        // 3. Put selected meme at index 0
-        const selectedId = dashboardData?.selectedMemeId;
-        if (selectedId) {
-          combinedMemes.sort((a, b) => {
-            if (a.id === selectedId) return -1;
-            if (b.id === selectedId) return 1;
-            return 0;
-          });
-          setSelectedMemeId(selectedId);
-        }
-
-        setMemes(combinedMemes);
       } catch (err) {
         console.error('Failed to initialize dashboard:', err);
         setMemes([]);

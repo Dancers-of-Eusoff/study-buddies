@@ -1,4 +1,4 @@
-export interface DashboardResponse {
+export interface MemesResponse {
 	memes: Meme[]
 	selectedMemeId?: string;
 }

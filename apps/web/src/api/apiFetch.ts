@@ -5,6 +5,7 @@ export default async function apiFetch(path: string, method: string, options: Re
     const res = await fetch(`${BASE}${path}`, {
         ...options,
         method: method,
+        credentials: 'include',
         headers: {
             ...(isPost && {'Content-Type': 'application/json'}),
             ...options.headers,
@@ -22,6 +23,7 @@ export default async function apiFetch(path: string, method: string, options: Re
 
         return fetch(`${BASE}${path}`, {
             ...options,
+            method: method,
             credentials: 'include',
             headers: {
                 ...(isPost && { 'Content-Type': 'application/json' }),
