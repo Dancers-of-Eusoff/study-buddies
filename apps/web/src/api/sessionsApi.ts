@@ -45,6 +45,9 @@ export async function getUserSessions(): Promise<SessionDetailsResponse[]> {
   if (!res.ok) {
     throw new Error('Failed to fetch user sessions');
   }
+  // const sex = res.json()
+  // console.log("RES: ", res)
+  // console.log("RES json: ", sex)
   return res.json();
 }
 

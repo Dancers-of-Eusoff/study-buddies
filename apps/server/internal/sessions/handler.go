@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/Dancers-of-Eusoff/study-buddies/apps/server/internal/helper"
@@ -15,11 +16,11 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/sessions/start", helper.RequireAuth(h.handleStart))
+	// mux.HandleFunc("POST /api/sessions/start", helper.RequireAuth(h.handleStart))
 	mux.HandleFunc("POST /api/sessions/end", helper.RequireAuth(h.handleEnd))
 	mux.HandleFunc("POST /api/sessions/interval", helper.RequireAuth(h.handleLogInterval))
 	mux.HandleFunc("POST /api/sessions/{id}/heartbeat", helper.RequireAuth(h.handleHeartbeat))
-	mux.HandleFunc("/api/sessions/user", helper.RequireAuth(h.handleGetUserSessions))
+	mux.HandleFunc("GET /api/sessions/user", helper.RequireAuth(h.handleGetUserSessions))
 }
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
@@ -104,11 +105,6 @@ func (h *Handler) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	user, ok := helper.UserFromContext(r.Context())
 
 	if ok == false {
@@ -117,6 +113,8 @@ func (h *Handler) handleGetUserSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	details, err := h.service.GetUserSessions(user.UserID)
+	log.Printf("User ses: %+v", details)
+	log.Printf("Err: %+v", err)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

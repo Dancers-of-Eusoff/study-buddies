@@ -327,6 +327,8 @@ export default function DashboardPage() {
           }),
         ]);
 
+        console.log("User ses: ", userSessions)
+
         if (userSessions) {
           setSessionsData(userSessions);
         }

@@ -138,17 +138,17 @@ func (s *Service) LogInterval(req LogIntervalRequest) (FocusInterval, error) {
 }
 
 func (s *Service) GetUserSessions(userID string) ([]SessionDetailsResponse, error) {
-	sessions, err := s.repo.ListSessionsByUserID(userID)
+	sessions, err := s.summaryRepo.ListSessionsByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
 
 	var results []SessionDetailsResponse
 	for _, sess := range sessions {
-		intervals, _ := s.repo.ListIntervalsBySessionID(sess.ID)
+		// intervals, _ := s.summaryRepo.ListIntervalsBySessionID(sess.ID)
 		results = append(results, SessionDetailsResponse{
 			Session:   sess,
-			Intervals: intervals,
+			Intervals: []FocusInterval{},
 		})
 	}
 

@@ -23,9 +23,7 @@ type FocusStatePayload struct {
 // Called after its final tick. Wired to sessions.SummaryRepository.SaveSummary
 type OnRoomEnd func(roomID string, summaries []UserFocusState)
 
-// Registry owns every live Room, keyed by roomID, plus the top-level lock
-// guarding creation/deletion of Room entries themselves (per-room mutation
-// is independently guarded by each Room's own RWMutex).
+// Registry owns every live Room, keyed by roomID
 type Registry struct {
 	mu    sync.RWMutex
 	rooms map[string]*Room
@@ -44,10 +42,7 @@ func NewRegistry(hub *websocket.Hub, cfg ScoringConfig, onEnd OnRoomEnd) *Regist
 	}
 }
 
-// StartOrGetRoom returns the live Room for roomID, creating and starting its
-// ticker goroutine on first call. Called from the POST /api/sessions/start
-// handler (not lazily on WS join, per the agreed design — the room's
-// existence/expiry is authoritative from the rooms table).
+// Called from POST /api/sessions/start
 func (reg *Registry) StartOrGetRoom(roomID string, endsAt time.Time) *Room {
 	reg.mu.Lock()
 	defer reg.mu.Unlock()
@@ -62,8 +57,8 @@ func (reg *Registry) StartOrGetRoom(roomID string, endsAt time.Time) *Room {
 	return r
 }
 
-// runRoom is the per-room 1s ticker goroutine. Ticks until EndsAt, then
-// persists summaries via onEnd and removes the room from the registry.
+// Starts 1s ticker, till EndsAt,
+// then save to summaries via onEnd, finally removes room from reg
 func (reg *Registry) runRoom(r *Room) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -73,7 +68,7 @@ func (reg *Registry) runRoom(r *Room) {
 			break
 		}
 
-		entries := r.Tick()
+		entries := r.Tick()			// telling the room every second passing
 		reg.broadcastLeaderboard(r.RoomID, entries)
 	}
 
@@ -95,11 +90,6 @@ func (reg *Registry) broadcastLeaderboard(roomID string, entries []LeaderboardEn
 	})
 }
 
-// HandleFocusState is wired into the existing WS dispatch switch (alongside
-// JOIN_ROOM / SEND_MESSAGE) for the FOCUS_STATE event type. It also handles
-// JOIN_ROOM-adjacent registration: a user's UserFocusState is created lazily
-// here on their first FOCUS_STATE message if not already present, covering
-// reconnects (Join is idempotent).
 func (reg *Registry) HandleFocusState(event websocket.Event, client *websocket.Client) {
 	reg.mu.RLock()
 	room, ok := reg.rooms[event.RoomID]
@@ -118,6 +108,6 @@ func (reg *Registry) HandleFocusState(event websocket.Event, client *websocket.C
 	room.Join(client.UserID, client.Username)
 	room.SetState(client.UserID, payload.State)
 
-	// Send an immediate snapshot back
+	// Send immediate snapshot back
 	reg.broadcastLeaderboard(room.RoomID, room.Snapshot())
 }

@@ -16,6 +16,7 @@ import styles from "./StudyRoomPage.module.css";
 import btn from '../components/Buttons.module.css';
 import type { RoomDetails } from '../types';
 import type { Session, FocusState } from '../types/session';
+import { useFocusSocket } from '../components/useFocusSocket';
 
 const FOCUS_STATES: { state: FocusState; label: string; emoji: string; colorVar: string }[] = [
   { state: 'FOCUSED',    label: 'Focused',    emoji: '🟢', colorVar: 'var(--leaf-deep)' },
@@ -67,21 +68,26 @@ function DestressBtn() {
 
 function Flashbang({
   myFocusState,
-  setMyFocusState,
   userMemes,
   allMemes,
   selectedMemeId,
 }: {
   myFocusState: FocusState;
-  setMyFocusState: Dispatch<SetStateAction<FocusState>>;
   userMemes: { id?: string; videoURL: string }[];
   allMemes: { id?: string; videoURL: string }[];
   selectedMemeId: string | null;
 }) {
   const [activeMemeUrl, setActiveMemeUrl] = useState<string>('');
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (myFocusState === 'DISTRACTED') {
+    if (myFocusState !== 'DISTRACTED') {
+      setDismissed(false);
+    }
+  }, [myFocusState]);
+
+  useEffect(() => {
+    if (myFocusState === 'DISTRACTED' && !dismissed) {
       let memeUrl = '';
 
       if (selectedMemeId) {
@@ -106,19 +112,73 @@ function Flashbang({
 
       setActiveMemeUrl(memeUrl);
     }
-  }, [myFocusState, userMemes, allMemes, selectedMemeId]);
+  }, [myFocusState, dismissed, userMemes, allMemes, selectedMemeId]);
 
-  if (myFocusState !== 'DISTRACTED') return null;
+  if (myFocusState !== 'DISTRACTED' || dismissed) return null;
 
   return (
     <div className={styles.popup}>
       <div className={styles.flashbang}>
-        <button className={styles.closeButton} onClick={() => setMyFocusState("FOCUSED")}>Close</button>
+        <button className={styles.closeButton} onClick={() => setDismissed(true)}>Close</button>
         <video src={activeMemeUrl} autoPlay className={styles.flashbangVideo} />
       </div>
     </div>
   );
 }
+// function Flashbang({
+//   myFocusState,
+//   setMyFocusState,
+//   userMemes,
+//   allMemes,
+//   selectedMemeId,
+// }: {
+//   myFocusState: FocusState;
+//   setMyFocusState: Dispatch<SetStateAction<FocusState>>;
+//   userMemes: { id?: string; videoURL: string }[];
+//   allMemes: { id?: string; videoURL: string }[];
+//   selectedMemeId: string | null;
+// }) {
+//   const [activeMemeUrl, setActiveMemeUrl] = useState<string>('');
+
+//   useEffect(() => {
+//     if (myFocusState === 'DISTRACTED') {
+//       let memeUrl = '';
+
+//       if (selectedMemeId) {
+//         const combined = [...userMemes, ...allMemes];
+//         const selectedMeme = combined.find((m) => m.id === selectedMemeId);
+//         if (selectedMeme) {
+//           memeUrl = selectedMeme.videoURL;
+//         }
+//       }
+
+//       if (!memeUrl) {
+//         const pool = [...allMemes, ...userMemes, ...DEFAULT_MEMES];
+//         // Deduplicate by videoURL to avoid overweighting duplicates
+//         const uniquePool = Array.from(new Set(pool.map((m) => m.videoURL)))
+//           .map((url) => pool.find((m) => m.videoURL === url)!);
+
+//         if (uniquePool.length > 0) {
+//           const randomIndex = Math.floor(Math.random() * uniquePool.length);
+//           memeUrl = uniquePool[randomIndex].videoURL;
+//         }
+//       }
+
+//       setActiveMemeUrl(memeUrl);
+//     }
+//   }, [myFocusState, userMemes, allMemes, selectedMemeId]);
+
+//   if (myFocusState !== 'DISTRACTED') return null;
+
+//   return (
+//     <div className={styles.popup}>
+//       <div className={styles.flashbang}>
+//         <button className={styles.closeButton} onClick={() => setMyFocusState("FOCUSED")}>Close</button>
+//         <video src={activeMemeUrl} autoPlay className={styles.flashbangVideo} />
+//       </div>
+//     </div>
+//   );
+// }
 
 // ─── Camera / object detection ───────────────────────────────────────────────
 
@@ -164,7 +224,7 @@ const LookAtMe = memo(({ onSample, paused }: { onSample: (f: FocusState) => void
       const vision = await FilesetResolver.forVisionTasks("/wasm");
       objectDetectorRef.current = await ObjectDetector.createFromOptions(vision, {
         baseOptions: { modelAssetPath: "/models/efficientdet_lite0.tflite" },
-        scoreThreshold: 0.6,
+        scoreThreshold: 0.55,
         runningMode: "VIDEO",
         categoryAllowlist: ["cell phone", "person"]
       });
@@ -248,7 +308,7 @@ function ChatPanel({ roomId, memberNames }: ChatPanelProps) {
 
   useEffect(() => {
     if (!userId) return;
-    const WS_URL = `${import.meta.env.VITE_WEBSOCKET_URL}?userId=${encodeURIComponent(userId)}`;
+    const WS_URL = `${import.meta.env.VITE_WEBSOCKET_URL}?roomId=${encodeURIComponent(roomId)}`;
     const ws = new WebSocket(WS_URL);
     socketRef.current = ws;
 
@@ -381,11 +441,20 @@ export default function StudyRoomPage() {
   // Every 3s camera sample lands here; drained into a majority state each minute.
   const sampleLogRef = useRef<FocusState[]>([]);
   const myFocusStateRef = useRef(myFocusState);
-  const handleFocusSample = useCallback((state: FocusState) => {
-    setMyFocusState(state);
-    myFocusStateRef.current = state;
-    sampleLogRef.current.push(state);
-  }, []);
+  // ─── Focus Socket ───────────────────────────────────────────────────────────────
+  const { leaderboard, sendFocusState } = useFocusSocket(roomId, user?.userId);
+
+  const handleFocusSample = useCallback((f: FocusState) => {
+    setMyFocusState(f);
+    sendFocusState(f);
+    myFocusStateRef.current = f;
+    sampleLogRef.current.push(f);
+  }, [sendFocusState]);
+  // const handleFocusSample = useCallback((state: FocusState) => {
+  //   setMyFocusState(state);
+  //   myFocusStateRef.current = state;
+  //   sampleLogRef.current.push(state);
+  // }, []);
 
   const sessionActive = session !== null && session.isActive;
   const { formatted: elapsed, elapsed: elapsedSecs } = useTimer(sessionActive);
@@ -501,6 +570,7 @@ export default function StudyRoomPage() {
     setSessionLoading(true); setSessionError('');
     try {
       const s = await startSession({ userId: user.userId, roomId });
+      console.log(user, s)
       setSession(s);
     } catch (e: unknown) {
       setSessionError(e instanceof Error ? e.message : 'Failed to start session');
@@ -757,10 +827,20 @@ export default function StudyRoomPage() {
             <div className={styles.panelHeader}>
               <span className={styles.panelHeaderEmoji}>🏆</span>
               <h2 className={styles.panelHeaderTitle}>Leaderboard</h2>
-              <span className={styles.panelHeaderNote}>live soon™</span>
+              {/* <span className={styles.panelHeaderNote}>live soon™</span> */}
             </div>
             <div className={styles.panelBody}>
-              {members.length === 0 ? (
+              {leaderboard.length === 0 ? (
+                <p className={styles.panelEmpty}>Waiting for members...</p>
+              ) : leaderboard.map((m, i) => (
+                <div key={m.userId} className={m.userId === user?.userId ? styles.leaderRowSelf : styles.leaderRow}>
+                  <span className={styles.leaderRank}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
+                  <span className={styles.leaderAvatar}>{m.userId === user?.userId ? '🐼' : '🐱'}</span>
+                  <span className={styles.leaderName}>{m.username}</span>
+                  <span className={styles.leaderPts}>{Math.round(m.score)} pts</span>
+                </div>
+              ))}
+              {/* {members.length === 0 ? (
                 <p className={styles.panelEmpty}>Waiting for members...</p>
               ) : members.map((m, i) => (
                 <div key={m.userId} className={m.userId === user?.userId ? styles.leaderRowSelf : styles.leaderRow}>
@@ -769,7 +849,7 @@ export default function StudyRoomPage() {
                   <span className={styles.leaderName}>{m.displayName}</span>
                   <span className={styles.leaderPts}>— pts</span>
                 </div>
-              ))}
+              ))} */}
             </div>
           </div>
 
@@ -814,7 +894,6 @@ export default function StudyRoomPage() {
       {/* Flashbang popup */}
       <Flashbang
         myFocusState={myFocusState}
-        setMyFocusState={setMyFocusState}
         userMemes={userMemes}
         allMemes={allMemes}
         selectedMemeId={selectedMemeId}
