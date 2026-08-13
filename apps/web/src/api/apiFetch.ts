@@ -39,7 +39,6 @@ export default async function apiFetch(path: string, method: string, options: Re
             ...options,
             method: method,
             credentials: 'include',
-            method: method,
             headers: {
                 ...(isPost && { 'Content-Type': 'application/json' }),
                 ...options.headers,

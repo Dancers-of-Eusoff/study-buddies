@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { FilesetResolver, ObjectDetector } from "@mediapipe/tasks-vision";
 import {
