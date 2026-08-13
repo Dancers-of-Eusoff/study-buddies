@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"log"
 	"sync"
 	"time"
 )
@@ -109,6 +110,9 @@ func (r *MemoryRepository) ListSessionsByUserID(userID string) ([]StudySession, 
 			userSessions = append(userSessions, session)
 		}
 	}
+
+	log.Printf("USERID: %v", userID)
+	log.Printf("User ses repo: %+v", userSessions)
 
 	return userSessions, nil
 }
